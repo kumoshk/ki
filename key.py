@@ -33,7 +33,7 @@ if __name__=="__main__":
             #print(file);
             subprocess.Popen("nano "+file, shell=True).communicate();
         except IndexError:
-            yn=input(args+" does not exist. Do you wish to create an open it? (y/n) ");
+            yn=input(args+" does not exist. Do you wish to create and open it? (y/n) ");
             if yn in ["yes", "y"]:
                 file=args.replace(" ", "\\ ");
                 subprocess.Popen("touch "+file, shell=True).communicate();
