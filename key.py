@@ -2,6 +2,27 @@
 
 import glob, sys, os, subprocess, re, pickle;
 
+version="""
+
+Version 0.3.1
+
+Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
+
+This version only applies to this file (not the other files in the project).
+
+Previous uploads that didn't say the version:
+1. 0.1.0 (first upload)
+2. 0.1.1 (fixed a typo)
+3. 0.2.0 (added persistent data)
+4. 0.3.0 (lots of changes)
+
+""".strip();
+
+contact="""
+My website: www.growspice.com
+Github page: https://github.com/kumoshk/key
+""".strip();
+
 path=os.getcwd();
 settings={}; #One dictionary for all the settings.
 settings["extension"]=".key";
@@ -73,7 +94,7 @@ If a file does not exist, key will prompt you to create it (and ask where to do 
 
 Key saves your decisions for future uses of the program. Key is not designed to be used from a script. It is designed for use by humans.
 
-The name key is inspired by index keys (or entries in an index, such as a glossary). Because entries in such tend to have unique names, opening only one file by that name is the default.
+The name key is inspired by dictionary key value pairs (or entries in an index, such as a glossary, or an actual lexicon). Because entries in such tend to have unique names, opening only one file by that name is the default.
 
 Key begins each feedback entry (except for such as this help page) with a bullet, in order to make them more readable.
 
@@ -100,9 +121,10 @@ Warnings:
 • Flags are evaluated before the key (the file).
 
 Example usage:
-• key -bae rm tester -> This makes the current working directory a base directory and deletes a file called `tester` (no extension); you better remember that it will remove files for future uses until you change that! (e.g. `key my important file` will then delete a file called `my important file`.)
+• key -bae rm tester -> This makes the current working directory a base directory and deletes a file called `tester` (no extension); you better remember that it will remove files for future uses until you change that! (e.g. `key my important file` will then delete a file called `my important file`.) Normally, key uses nano (not rm), so if you don't use the -a flag, you should be fine.
 
 To do:
+• Make an update option (which downloads and installs the update, if one exists).
 • Make it so users can use glob wildcards properly.
 • Make more flags, which instead of toggling something will ensure a specific setting is set (in case you forget what was set or something).
 • Make a file extension whose name supercedes others and runs code (e.g. Python, Lua, etc.) when accessed (instead of being opened by nano). Make it so you can toggle this on and off.
