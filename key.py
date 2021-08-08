@@ -4,7 +4,7 @@ import glob, sys, os, subprocess, re, pickle;
 
 version="""
 
-Version 0.4.1
+Version 0.5.0
 
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 
@@ -15,6 +15,9 @@ Previous uploads that didn't say the version:
 2. 0.1.1 (fixed a typo)
 3. 0.2.0 (added persistent data)
 4. 0.3.0 (lots of changes)
+
+Errata:
+1. Note that version 0.4.1 was supposed to be 0.4.0.
 
 """.strip();
 
@@ -138,6 +141,9 @@ Non-combinable options:
 • --about: About key, contact, etc.
 • --help: Print the help (without the option of doing other stuff at the same time).• --version: Print the version information.
 
+Special options:
+• Begin search query with a colon (it won't open a key): Find all the files in the directory structure (or base or default directory structure), regardless of file extension (e.g. `key :my search text` is the same as `grep -rl my\ search\ text *[ my/baseOrDefault/directory/path]`).
+
 Warnings:
 • Should the program crash, note that it's possible that some data was not saved during that execution of key (since the print statements occur before the saving in many instances, in order to make the code more efficient).
 • Improper configuation may result in undesirable effects. 
@@ -146,6 +152,10 @@ Warnings:
 
 Example usage:
 • key -bae rm tester -> This makes the current working directory a base directory and deletes a file called `tester` (no extension); you better remember that it will remove files for future uses until you change that! (e.g. `key my important file` will then delete a file called `my important file`.) Normally, key uses nano (not rm), so if you don't use the -a flag, you should be fine.
+
+Command-line tips for those who like key:
+• Use `ls -R` to show the contents of a directory structure recursively.
+• Use `grep -r 'search text' *` to find all the files in a directory structure that contain the words 'search text'.
 
 To do:
 • Make it so you can have a secondary list of programs that open stuff (for when you want to run things, as opposed to open and edit them), and have a flag for toggling and/or invoking this.
@@ -325,7 +335,20 @@ if __name__=="__main__":
                 print(version);
             elif pre=="--about":
                 print(about);
-        if len(args)!=0:
+        if len(args)!=0 and args[0].startswith(":")==True:
+            args=" ".join(args).strip();
+            args=args[1:];
+            args=re.sub(r"\\* +", r"\\ ", args);
+            if baseDir!=None and settings["searchBaseDir"]==True:
+                rdir=re.sub(r"\\* +", r"\\ ", baseDir);
+                subprocess.Popen("grep -rl "+args+" * "+rdir, shell=True).communicate();
+            elif settings["defaultDir"]!=None and settings["useDefault"]==True:
+                rfile=os.path.join(settings["defaultDir"], args);
+                rdir=re.sub(r"\\* +", r"\\ ", settings["defaultDir"]);
+                subprocess.Popen("grep -rl "+args+" * "+rdir, shell=True).communicate();
+            else:
+                subprocess.Popen("grep -rl "+args+" *", shell=True).communicate();
+        elif len(args)!=0:
             if "." in args[-1]: #If an extension is specified, make it the new default extension (it goes from the final period to the end of the filename).
                 newExt="."+args[-1].split(".")[-1];
                 if newExt!=settings["extension"]:
