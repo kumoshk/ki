@@ -3,7 +3,7 @@
 import glob, sys, os, subprocess, re, pickle, platform;
 
 version="""
-Version 0.7.1
+Version 0.7.2
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -40,7 +40,7 @@ settings["baseDir"]=None; #This is the current base directory (of if there is no
 settings["searchBaseDir"]=True; #Whether or not to search for keys from the base dir when in its subdirectories (and so on recursively).
 settings["openAll"]=False; #Whether or not to open all files found or just one.
 settings["setOpenDefault"]=False; #Whether opening a file with a specific extension sets that extension to be the default.
-settings["openSpecifiedExt"]=False; #Whether you can open extensions that aren't the default just by typing them in (this won't work for blank extensions).
+settings["openSpecifiedExt"]=True; #Whether you can open extensions that aren't the default just by typing them in (this won't work for blank extensions).
 backup=settings.copy();
 save_it=False; #If set to True, settings will be saved (pickled). Calling saveSettings() sets it back to False.
 
