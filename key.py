@@ -4,7 +4,7 @@ import glob, sys, os, subprocess, re, pickle, platform;
 
 version="""
 
-Version 0.6.0
+Version 0.7.0
 
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 
@@ -39,9 +39,11 @@ My website: www.growspice.com
 Github page: https://github.com/kumoshk/key
 """.strip();
 
+esc_char="\\";
 win=False;
 if platform.system()=="Windows":
     win=True;
+    esc_char="^";
 path=os.getcwd();
 settings={}; #One dictionary for all the settings.
 settings["extension"]=".key";
@@ -57,7 +59,7 @@ settings["baseDir"]=None; #This is the current base directory (of if there is no
 settings["searchBaseDir"]=True; #Whether or not to search for keys from the base dir when in its subdirectories (and so on recursively).
 settings["openAll"]=False; #Whether or not to open all files found or just one.
 settings["setOpenDefault"]=False; #Whether opening a file with a specific extension sets that extension to be the default.
-settings["openSpecifiedExt"]=False; #Whether you can open extensions that aren't the default just by typing them in (this won't work for blank extensions).
+settings["openSpecifiedExt"]=True; #Whether you can open extensions that aren't the default just by typing them in (this won't work for blank extensions).
 backup=settings.copy();
 save_it=False; #If set to True, settings will be saved (pickled). Calling saveSettings() sets it back to False.
 
@@ -83,6 +85,12 @@ def saveSettings():
     with open(settingsDictPath, "wb") as FILE:
             pickle.dump(settings, FILE, -1);
 
+def touch(fp, contents=""):
+    #If a file doesn't exist, create it.
+    if os.path.exists(fp)==False:
+        with open(fp, "w") as FILE:
+            FILE.write(contents);
+
 baseDir=None;
 for x in settings["baseDirs"]:
     if path.startswith(x+os.sep) or x==path:
@@ -106,7 +114,7 @@ def addCurrentBaseDir(): #Make the current working directory a base directory.
         if path==x:
             print("• The current working directory is already a base directory. It cannot be added.");
             return False;
-        elif path.startswith(x+os.sep): #&&& Windows incompatible from this point.
+        elif path.startswith(x+os.sep):
             print("• The current working directory is already within the directory structure of a base directory. It cannot be added. Here is the base directory:\n"+x);
             return False;
         elif x==path:
@@ -171,13 +179,13 @@ def getKeyPaths(*keyNames): #&&&Gets the proper paths for each key in the list.
     return keyPaths;
 
 helpString="""
-Welcome to key, which is designed to make your command-line life easier. It allows you to open a file (default) or all the files (searching recursively) within a directory structure, with a program of your choice (nano being the default). For instance, if you are in `~/book/` and you type `key Sam Jones` it will search `/book/` and all its subdirectories recursively for a file named `Sam Jones.key`; when it finds one, it will open it with the nano text editor (without changing the current directory).
+Welcome to key, which is designed to make your command-line life easier. It allows you to open a file with a specific name (default) or all the files with that name (searching recursively) within a directory structure, with a program of your choice (nano being the default for Linux, and Notepad for Windows). For instance, if you are in `~/book/` and you type `key Sam Jones` it will search `/book/` and all its subdirectories recursively for a file named `Sam Jones.key`; when it finds one, it will open it with the nano text editor (without changing the current directory).
 
-Note that you must only provide one file name per use of key (and you do not need to surround it with quotes, nor escape spaces); you do not need to type `.key`. You may do these things, however. `.key` is the default file extension, but you can change it, or make it so no extension is used. In order to change the default file extension, simply specify the file extension: e.g. `key test.txt` will change the default file extension to `.txt`; then, when you type `key test2` it will search for `test2.txt`.
+Note that you must only provide one file name per use of key (and you do not need to surround it with quotes, nor escape spaces); you do not need to type `.key` when using the default settings. You may do those things, however. `.key` is the default file extension, but you can change it, or make it so no extension is used.
 
 If a file does not exist, key will prompt you to create it (and ask where to do so, giving you some convenient options).
 
-Key saves your decisions for future uses of the program. Key is not designed to be used from a script. It is designed for use by humans.
+Key saves your decisions for future uses of the program. Key is not currently designed to be used from a script. It is designed for use by humans.
 
 The name key is inspired by dictionary key value pairs (or entries in an index, such as a glossary, or an actual lexicon). Because entries in such tend to have unique names, opening only one file by that name is the default.
 
@@ -200,7 +208,7 @@ Combinable options:
 • -v: Print the version information.
 • -p: Prompts you for a specific file extension to open with a specific app, every time.
 • -P: Prompts you to undo an specific action performed with -p.
-• -2: Toggle whether to open the specified extension instead of the default (this won't work for no extension). Note that if this is set, for instance, typing `key test.key` will open `test.key` instead of `test.key.key` even when the default extension is `.key`, but if you type `test.txt` it will open `test.txt` instead of `test.txt.key` (again, when the default extension is `.key`). The default setting is false.
+• -2: Toggle whether to open the specified extension instead of the default (this won't work for no extension). Note that if this is set, for instance, typing `key test.key` will open `test.key` instead of `test.key.key` even when the default extension is `.key`, but if you type `test.txt` it will open `test.txt` instead of `test.txt.key` (again, when the default extension is `.key`). The default setting is true.
 • -4: Toggle whether when specified extensions are opened (see -2) they become the new default or not. The default setting is false.
 
 Non-combinable options:
@@ -427,20 +435,31 @@ if __name__=="__main__":
                 args=[]; #Clear the args so it won't do anything else.
                 print(about);
             elif pre=="--f": #&&&Open multiple filepaths (files with different names) instead of just one name; requires escaped spaces (no unescaped qutoes to handle spaces).
-                multipleFiles=re.split(r"(?<!\\) ", args);
+                multipleFiles=re.split(r"(?<!"+esc_char+") ", args);
+        def search_files(the_args, the_directory=None): #This calls the grep or findstr commands, depending on the OS.
+            if win==False:
+                if the_directory!=None:
+                    subprocess.Popen("grep -rl "+the_args+" * "+the_directory, shell=True).communicate();
+                else:
+                    subprocess.Popen("grep -rl "+the_args+" *", shell=True).communicate();
+            else:
+                if the_directory!=None:
+                    subprocess.Popen("findstr /m /s /i /d:"+the_directory+" "+the_args+" *", shell=True).communicate();
+                else:
+                    subprocess.Popen("findstr /m /s /i "+the_args+" *", shell=True).communicate();
         if len(args)!=0 and args[0].startswith(":")==True:
             args=" ".join(args).strip();
             args=args[1:];
-            args=re.sub(r"\\* +", r"\\ ", args);
+            args=re.sub(esc_char+r"* +", esc_char+r" ", args);
             if baseDir!=None and settings["searchBaseDir"]==True:
-                rdir=re.sub(r"\\* +", r"\\ ", baseDir);
-                subprocess.Popen("grep -rl "+args+" * "+rdir, shell=True).communicate();
+                rdir=re.sub(esc_char+r"* +", esc_char+r" ", baseDir)
+                search_files(args, rdir);
             elif settings["defaultDir"]!=None and settings["useDefault"]==True:
                 rfile=os.path.join(settings["defaultDir"], args);
                 rdir=re.sub(r"\\* +", r"\\ ", settings["defaultDir"]);
-                subprocess.Popen("grep -rl "+args+" * "+rdir, shell=True).communicate();
+                search_files(args, rdir);
             else:
-                subprocess.Popen("grep -rl "+args+" *", shell=True).communicate();
+                search_files(args);
         elif len(args)!=0:
             extension=settings["extension"]; #We need to use this in case we don't save to save it.
             if "." in args[-1] and settings["openSpecifiedExt"]==True: #If an extension is specified, make it the new default extension (it goes from the final period to the end of the filename).
@@ -457,8 +476,8 @@ if __name__=="__main__":
                     args=args+extension;
                 elif settings["openSpecifiedExt"]==False: #Add the extension even if you specify it.
                     args=args+extension;
-                if "\\" in args:
-                    args=args.replace("\\", "");
+                if esc_char in args:
+                    args=args.replace(esc_char, "");
             else:
                 args=args[0];
                 args=os.path.basename(args);
@@ -497,7 +516,7 @@ if __name__=="__main__":
                     dn=os.path.dirname(f);
                     bn=os.path.basename(f);
                     f=dn+os.sep+bn;
-                    f=re.sub(r"\\* ", r"\\ ", f);
+                    f=re.sub(esc_char+r"* ", esc_char+r" ", f);
                     allFound.append(f);
                     if firstFile==True:
                         if settings["lastKeyDir"]!=dn:
@@ -527,26 +546,26 @@ if __name__=="__main__":
                 else:
                     yn=input("• "+args+" does not exist.\n• Do you wish to create and open it (n = no; y = current working directory; b = base directory; k = directory of the last key opened?) ");
                 if yn in {"y", "yes"}:
-                    rfile=re.sub(r"\\* ", r"\\ ", args);
+                    rfile=re.sub(esc_char+r"* ", esc_char+r" ", args);
                     if settings["lastKeyDir"]!=path:
                         settings["lastKeyDir"]=path;
                         print("• Last key directory set to `"+settings["lastKeyDir"]+"`.");
                         #saveSettings();
                         save_it=True;
-                    subprocess.Popen("touch "+rfile, shell=True).communicate();
+                    touch(rfile);
                     print("• "+args+" created.");
                     subprocess.Popen(getApp()+" "+rfile, shell=True).communicate();
                 elif yn=="b":
                     if settings["useDefault"]==True and settings["defaultDir"]!=None:
 
                         file=os.path.join(settings["defaultDir"], os.path.basename(args));
-                        rfile=re.sub(r"\\* ", r"\\ ", file);
+                        rfile=re.sub(esc_char+r"* ", esc_char+r" ", file);
                         if settings["lastKeyDir"]!=settings["defaultDir"]:
                             settings["lastKeyDir"]=settings["defaultDir"];
                             print("• Last key directory set to `"+settings["lastKeyDir"]+"`.");
                             #saveSettings();
                             save_it=True;
-                        subprocess.Popen("touch "+rfile, shell=True).communicate();
+                        touch(rfile);
                         print("• "+args+" created in the default directory:\n"+file);
                         subprocess.Popen(getApp()+" "+rfile, shell=True).communicate();
                     else:
@@ -560,26 +579,26 @@ if __name__=="__main__":
                                 yn2=input("• Would you like to create it within the last-accessed base directory? (y/n) ");
                                 if yn2 in {"y", "yes"}:
                                     file=os.path.join(settings["baseDir"], os.path.basename(args));
-                                    rfile=re.sub(r"\\* ", r"\\ ", file);
+                                    rfile=re.sub(esc_char+r"* ", esc_char+r" ", file);
                                     if settings["lastKeyDir"]!=settings["baseDir"]:
                                         settings["lastKeyDir"]=settings["baseDir"];
                                         print("• Last key directory set to `"+settings["lastKeyDir"]+"`.");
                                         #saveSettings();
                                         save_it=True;
-                                    subprocess.Popen("touch "+rfile, shell=True).communicate();
+                                    touch(rfile);
                                     print("• "+args+" created in the last-accessed base directory:\n"+file);
                                     subprocess.Popen(getApp()+" "+rfile, shell=True).communicate();
                                 else:
                                     print("• "+args+" not created.");
                         else:
                             file=os.path.join(baseDir, os.path.basename(args));
-                            rfile=re.sub(r"\\* ", r"\\ ", file);
+                            rfile=re.sub(esc_char+r"* ", esc_char+r" ", file);
                             if settings["lastKeyDir"]!=baseDir:
                                 settings["lastKeyDir"]=baseDir;
                                 print("• Last key directory set to `"+settings["lastKeyDir"]+"`.");
                                 #saveSettings();
                                 save_it=True;
-                            subprocess.Popen("touch "+rfile, shell=True).communicate();
+                            touch(rfile);
                             print("• "+args+" created in the base directory:\n"+file);
                             subprocess.Popen(getApp()+" "+rfile, shell=True).communicate();
                 elif yn=="k":
@@ -589,8 +608,8 @@ if __name__=="__main__":
                         if settings["useDefault"]==True and settings["defaultDir"]==None:
                             print("• The default directory is not set. Acting as if the default directory is disabled.");
                         file=os.path.join(settings["lastKeyDir"], os.path.basename(args));
-                        rfile=re.sub(r"\\* ", r"\\ ", file);
-                        subprocess.Popen("touch "+rfile, shell=True).communicate();
+                        rfile=re.sub(esc_char+r"* ", esc_char+r" ", file);
+                        touch(rfile);
                         print("• "+args+" created in the last key directory:\n"+file);
                         subprocess.Popen(getApp()+" "+rfile, shell=True).communicate();
                 else:
