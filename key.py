@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import glob, sys, os, subprocess, re, pickle;
+import glob, sys, os, subprocess, re, pickle, platform;
 
 version="""
 
-Version 0.5.0
+Version 0.6.0
 
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 
@@ -39,10 +39,15 @@ My website: www.growspice.com
 Github page: https://github.com/kumoshk/key
 """.strip();
 
+win=False;
+if platform.system()=="Windows":
+    win=True;
 path=os.getcwd();
 settings={}; #One dictionary for all the settings.
 settings["extension"]=".key";
 settings["app"]="nano"; #This is the default app for opening files; 'apps' below overrides this, however.
+if win==True:
+    settings["app"]="notepad";
 settings["apps"]={}; #Default apps to open the various file extensions. Keys are file extensions and values are the apps to open them.
 settings["lastKeyDir"]=None; #Directory of the last key opened.
 settings["defaultDir"]=None; #This is a saved directory for frequent use, which can be changed. You can use it even when you're not in it.
@@ -51,11 +56,17 @@ settings["baseDirs"]=set(); #This is a set of directories. If you're within thes
 settings["baseDir"]=None; #This is the current base directory (of if there is no current one, it is the last base directory used).
 settings["searchBaseDir"]=True; #Whether or not to search for keys from the base dir when in its subdirectories (and so on recursively).
 settings["openAll"]=False; #Whether or not to open all files found or just one.
+settings["setOpenDefault"]=False; #Whether opening a file with a specific extension sets that extension to be the default.
+settings["openSpecifiedExt"]=False; #Whether you can open extensions that aren't the default just by typing them in (this won't work for blank extensions).
 backup=settings.copy();
 save_it=False; #If set to True, settings will be saved (pickled). Calling saveSettings() sets it back to False.
 
 #Make sure the user settings folder exists.
-settingsPath=os.path.join(os.path.expanduser("~"), ".key");
+settingsPath=None;
+if win==False: #If the user is on Linux or other such.
+    settingsPath=os.path.join(os.path.expanduser("~"), ".key_kumoshk");
+else: #If the user is on Windows
+    settingsPath=os.path.join(os.getenv("APPDATA"), "key_kumoshk");
 if not os.path.isdir(settingsPath):
     os.makedirs(settingsPath);
 
@@ -81,6 +92,8 @@ for x in settings["baseDirs"]:
             save_it=True;
         break;
 
+multipleFiles=None;
+
 def getApp():
     if settings["extension"] in settings["apps"]:
         return settings["apps"][settings["extension"]];
@@ -93,7 +106,7 @@ def addCurrentBaseDir(): #Make the current working directory a base directory.
         if path==x:
             print("• The current working directory is already a base directory. It cannot be added.");
             return False;
-        elif path.startswith(x+os.sep):
+        elif path.startswith(x+os.sep): #&&& Windows incompatible from this point.
             print("• The current working directory is already within the directory structure of a base directory. It cannot be added. Here is the base directory:\n"+x);
             return False;
         elif x==path:
@@ -106,6 +119,56 @@ def addCurrentBaseDir(): #Make the current working directory a base directory.
     print("• Adding the current working directory to your list of base directories. Here is the new list of all your base directories:\n"+"\n".join(settings["baseDirs"])+"\n");
     save_it=True;
     return True;
+
+def getKeyPaths(*keyNames): #&&&Gets the proper paths for each key in the list.
+    global settings, path;
+    keyPaths=[];
+    for x in keyNames:
+        """
+        if "." in args[-1]: #If an extension is specified, make it the new default extension (it goes from the final period to the end of the filename).
+            newExt="."+args[-1].split(".")[-1];
+            if newExt!=settings["extension"]:
+                settings["extension"]=newExt;
+                print("• Default extension changed to `"+settings["extension"]+"`.");
+                #saveSettings();
+                save_it=True;
+        if len(args)>1:
+            args=" ".join(args);
+            args=args.strip();
+            if not args.endswith(settings["extension"]):
+                args=args+settings["extension"];
+            if "\\" in args:
+                args=args.replace("\\", "");
+        """
+        args=args[0];
+        args=os.path.basename(args);
+        if not args.endswith(settings["extension"]):
+            args=args+settings["extension"];
+
+        g=None;
+        if settings["searchBaseDir"]==True and baseDir!=None:
+            if settings["useDefault"]==True and settings["defaultDir"]!=None:
+                g=glob.glob(settings["defaultDir"]+"/**/"+args, recursive=True);
+            else:
+                g=glob.glob(baseDir+"/**/"+args, recursive=True);
+        else:
+            if settings["searchBaseDir"]==True and settings["useDefault"]==False:
+                print("• There is no base directory here; using the current working directory.");
+                g=glob.glob(path+"/**/"+args, recursive=True);
+            elif settings["searchBaseDir"]==True and settings["useDefault"]==True and settings["defaultDir"]!=None:
+                print("• Using the default directory:\n"+settings["defaultDir"]);
+                g=glob.glob(settings["defaultDir"]+"/**/"+args, recursive=True);
+            elif settings["useDefault"]==True:
+                if settings["defaultDir"]!=None:
+                    g=glob.glob(settings["defaultDir"]+"/**/"+args, recursive=True);
+                else:
+                    print("• The default directory is not set. (Acting as if it is disabled.)");
+                    if baseDir==None:
+                        print("• There is no base directory here; using the current working directory.");
+                    g=glob.glob(path+"/**/"+args, recursive=True);
+            else:
+                g=glob.glob(path+"/**/"+args, recursive=True);
+    return keyPaths;
 
 helpString="""
 Welcome to key, which is designed to make your command-line life easier. It allows you to open a file (default) or all the files (searching recursively) within a directory structure, with a program of your choice (nano being the default). For instance, if you are in `~/book/` and you type `key Sam Jones` it will search `/book/` and all its subdirectories recursively for a file named `Sam Jones.key`; when it finds one, it will open it with the nano text editor (without changing the current directory).
@@ -121,43 +184,49 @@ The name key is inspired by dictionary key value pairs (or entries in an index, 
 Key begins each feedback entry (except for such as this help page) with a bullet, in order to make them more readable.
 
 Combinable options:
-• -q: reset the app settings.
+[Note: You must include a hyphen before the flags, or else before each flag.]
+• -q: reset the app settings. You will lose any configurations that you have made.
 • -o: Toggle whether key opens multiple files with the same name (default is false).
-• -a: If used, the first word you enter after the flags will be the new default app key uses to open files (if you follow it with a file, it will open it).
-• -e: This sets the default file extension to no file extension. (FYI, to set it to another file extension just type out the file extension when you open it the first time; e.g. `key index.html` will set the default file extension to `.html`, and you can type `key index` to access it next time.)
+• -a: If used, the first word you enter after the flags will be the new default app key uses to open files (if you follow it with a file, it will open it in the regular fasion; e.g. `key -a cat test` will open `test.key`, and any subsequent keys opened, with `cat`).
+• -e: This prompts you to set the default file extension.
 • -d: Set the default directory: If no base directory is set, make the current working directory the default directory. If there is at least one base directory, make the current or last-accessed base directory the default directory (in that priority order). You may only have one default directory at a time.
 • -D: Toggle whether to use the default directory (default is False). This overrides everything else (and uses it as your current base directory no matter where you are).
 • -b: Make the current working directory a base directory (you can have multiple base directories).
 • -r: Remove the current directory (or the current base directory) from being a base directory.
-• -s: Toggle whether to search for the key (file) to open from the base directory (if you are inside a base directory structure).
+• -s: Toggle whether to search for the key (file) to open from the base directory (if you are inside a base directory structure). The default is true; so, if you don't want to open keys starting from the base directory that aren't in/under the current directory you're in within that base directory, then you should set this to false.
 • -c: Clear the list of base directories, or remove the current base directory from being a base directory (you will be prompted which to do).
 • -n: List the base directories, and the default directory.
 • -h: Print the help.
 • -v: Print the version information.
 • -p: Prompts you for a specific file extension to open with a specific app, every time.
 • -P: Prompts you to undo an specific action performed with -p.
+• -2: Toggle whether to open the specified extension instead of the default (this won't work for no extension). Note that if this is set, for instance, typing `key test.key` will open `test.key` instead of `test.key.key` even when the default extension is `.key`, but if you type `test.txt` it will open `test.txt` instead of `test.txt.key` (again, when the default extension is `.key`). The default setting is false.
+• -4: Toggle whether when specified extensions are opened (see -2) they become the new default or not. The default setting is false.
 
 Non-combinable options:
 • --about: About key, contact, etc.
-• --help: Print the help (without the option of doing other stuff at the same time).• --version: Print the version information.
+• --help: Print the help (without the option of doing other stuff at the same time).
+• --version: Print the version information.
 
 Special options:
 • Begin search query with a colon (it won't open a key): Find all the files in the directory structure (or base or default directory structure), regardless of file extension (e.g. `key :my search text` is the same as `grep -rl my\ search\ text *[ my/baseOrDefault/directory/path]`).
 
 Warnings:
 • Should the program crash, note that it's possible that some data was not saved during that execution of key (since the print statements occur before the saving in many instances, in order to make the code more efficient).
-• Improper configuation may result in undesirable effects. 
+• Improper configuation may result in undesirable effects.
 • You use this software at your own risk. It comes with no guarantees. You assume all responsibility for what happens by using it, etc.
 • Flags are evaluated before the key (the file).
 
-Example usage:
-• key -bae rm tester -> This makes the current working directory a base directory and deletes a file called `tester` (no extension); you better remember that it will remove files for future uses until you change that! (e.g. `key my important file` will then delete a file called `my important file`.) Normally, key uses nano (not rm), so if you don't use the -a flag, you should be fine.
-
-Command-line tips for those who like key:
+Tips:
 • Use `ls -R` to show the contents of a directory structure recursively.
-• Use `grep -r 'search text' *` to find all the files in a directory structure that contain the words 'search text'.
+• If you need to find the application data, it's at `~/.key_kumoshk` on Linux, and in your application data in a folder called `key_kumoshk` on Windows.
+""".strip();
 
+"""
 To do:
+• Make it so you can do `ls -R` from the base or default directory.
+• Make it so you can use archive files as if they were base directories (or optionally decompress them and then use the extracted directory as such, if saves are desired).
+• Make it so you can queue files to open later (in order to open more than one at a time in the same terminal session). Actually, bookmarks should be able to handle this. Make another app that interfaces with key to do this.
 • Make it so you can have a secondary list of programs that open stuff (for when you want to run things, as opposed to open and edit them), and have a flag for toggling and/or invoking this.
 • Make key warn you when a directory exists with the same name of a key that you attempt to access.
 • Make it so you can use different file extension / app schemes in different base directories (and have a default one for when those aren't set). You could just have a file in the directory that key searches for to get the settings you've configured (key could automatically create it, too).
@@ -167,7 +236,6 @@ To do:
 • Make a file extension whose name supercedes others and runs code (e.g. Python, Lua, etc.) when accessed (instead of being opened by nano). Make it so you can toggle this on and off.
 • Make a file extension whose name supercedes others and opens a random key, or set of keys (with the rules of how to select which ones defined in the file). Also, you could make it so it does opens a/some key(s) according to variables saved somewhere. The idea is to make the command-line itself a text adventure or some such (instead of having to stay in the program the entire time). So, `key the pearl room` might open different files depending on which variables have been set, or which random choice is chosen. Random choices need to be able to define the likelihood of being chosen.
 • Debug default directories.
-• Add -v and --version flags.
 • Add the --about flag.
 • Add a manpage entry.
 • Make it so you can install it with pip.
@@ -206,9 +274,22 @@ if __name__=="__main__":
                 args=args[1:];
                 save_it=True;
             if "e" in flags: #Make the default extension no extension.
-                settings["extension"]="";
-                print("• The default extension is now no extension.\n");
-                save_it=True;
+                ext_set=input("Please enter a file extension to be the default (blank for no file extension; `.` for cancel; current default=`"+settings["extension"]+"`): ");
+                if ext_set!=None:
+                    if ext_set==".":
+                        print("• The default file extension has not been changed.");
+                    elif ext_set=="":
+                        settings["extension"]=ext_set;
+                        print("• The default file extension is now no extension.\n");
+                        save_it=True;
+                    else:
+                        if ext_set[0]!=".":
+                            ext_set="."+ext_set;
+                        settings["extension"]=ext_set;
+                        print("• The default file extension is now `"+settings["extension"]+"`.\n");
+                        save_it=True;
+                else:
+                    print("• The default file extension has not been changed.");
             if "d" in flags: #Make the current or last-accessed base directory the default directory, or if there is none, make the current working directory the default directory (and a base directory).
                 if settings["baseDir"]==None:
                     yn=input("• No base directories exist. Would you like to make the current working directory a base directory (and the default directory)? (y/n) ");
@@ -327,14 +408,26 @@ if __name__=="__main__":
                         print("• That file extension has not been set (so, it cannot be reset).");
                 else:
                     print("• No changes have been made to which apps open which extensions.");
+            if "2" in flags: #Toggle whether to open the specified extension if one is specified (instead of the default), and whether to set that specified extension as the default.
+                settings["openSpecifiedExt"]=not settings["openSpecifiedExt"];
+                save_it=True;
+                print("• Open specified extension set to "+str(settings["openSpecifiedExt"])+".");
+            if "4" in flags: #Toggle non-default extension specified as the default.
+                settings["setOpenDefault"]=not settings["setOpenDefault"];
+                save_it=True;
+                print("• The setting whether to make a specified extension the default has been set to "+str(settings["setOpenDefault"])+".");
         elif pre.startswith("--")==True:
-            args=[]; #Clear the args so it won't do anything else.
             if pre=="--help":
+                args=[]; #Clear the args so it won't do anything else.
                 print(helpString);
             elif pre=="--version":
+                args=[]; #Clear the args so it won't do anything else.
                 print(version);
             elif pre=="--about":
+                args=[]; #Clear the args so it won't do anything else.
                 print(about);
+            elif pre=="--f": #&&&Open multiple filepaths (files with different names) instead of just one name; requires escaped spaces (no unescaped qutoes to handle spaces).
+                multipleFiles=re.split(r"(?<!\\) ", args);
         if len(args)!=0 and args[0].startswith(":")==True:
             args=" ".join(args).strip();
             args=args[1:];
@@ -349,25 +442,30 @@ if __name__=="__main__":
             else:
                 subprocess.Popen("grep -rl "+args+" *", shell=True).communicate();
         elif len(args)!=0:
-            if "." in args[-1]: #If an extension is specified, make it the new default extension (it goes from the final period to the end of the filename).
-                newExt="."+args[-1].split(".")[-1];
-                if newExt!=settings["extension"]:
-                    settings["extension"]=newExt;
+            extension=settings["extension"]; #We need to use this in case we don't save to save it.
+            if "." in args[-1] and settings["openSpecifiedExt"]==True: #If an extension is specified, make it the new default extension (it goes from the final period to the end of the filename).
+                extension="."+args[-1].split(".")[-1];
+                if extension!=settings["extension"] and settings["setOpenDefault"]==True:
+                    settings["extension"]=extension;
                     print("• Default extension changed to `"+settings["extension"]+"`.");
                     #saveSettings();
                     save_it=True;
             if len(args)>1:
                 args=" ".join(args);
                 args=args.strip();
-                if not args.endswith(settings["extension"]):
-                    args=args+settings["extension"];
+                if not args.endswith(extension):
+                    args=args+extension;
+                elif settings["openSpecifiedExt"]==False: #Add the extension even if you specify it.
+                    args=args+extension;
                 if "\\" in args:
                     args=args.replace("\\", "");
             else:
                 args=args[0];
                 args=os.path.basename(args);
-                if not args.endswith(settings["extension"]):
-                    args=args+settings["extension"];
+                if not args.endswith(extension):
+                    args=args+extension;
+                elif settings["openSpecifiedExt"]==False: #Add the extension even if you specify it.
+                    args=args+extension;
 
             g=None;
             if settings["searchBaseDir"]==True and baseDir!=None:
