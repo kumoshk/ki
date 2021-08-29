@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform;
 
 version="""
-Version 0.8.0
+Version 0.8.1
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -38,12 +38,12 @@ settings["extension"]=".key"; #Unimplemented
 extension=None; #This is to make it global down below, so the getApp() method can use it.
 settings["scriptExtension"]=".ks"; #Unimplemented; Files with this extension, rather than just being opened, can perform various actions (such as specify a list of files to open, open random files, according to a set of likelihoods, etc.).
 settings["app"]="nano"; #This is the default app for opening files; 'apps' below overrides this, however.
-settings["xapp"]="python3"; #This is the default app to execute files with when they're not already set to be executable.
+settings["xapp"]="python3"; #Unimplemented; this is the default app to execute files with when they're not already set to be executable.
 settings["apps"]={}; #Default apps to open the various file extensions. Keys are file extensions and values are the apps to open them.
 soundApps="8svx aif aifc aiff aiffc al amb au avr caf cdda cdr cvs cvsd cvu dat dvms f32 f4 f64 f8 fap flac fssd gsm gsrt hcom htk ima ircam la lpc lpc10 lu mat mat4 mat5 maud mp2 mp3 nist ogg opus paf prc pvf raw s1 s16 s2 s24 s3 s32 s4 s8 sb sd2 sds sf sl sln smp snd sndfile sndr sndt sou sox sph sw txw u1 u16 u2 u24 u3 u32 u4 u8 ub ul uw vms voc vorbis vox w64 wav wavpcm wve xa xi m3u pls".split(" ");
 for x in soundApps:
     settings["apps"]["."+x]="play";
-settings["xapps"]={}; #xapps is to xapp as apps is to app
+settings["xapps"]={}; #Unimplemented; xapps is to xapp as apps is to app
 settings["lastKeyDir"]=None; #Directory of the last key opened.
 settings["defaultDir"]=None; #This is a saved directory for frequent use, which can be changed. You can use it even when you're not in it.
 settings["useDefault"]=False; #If this is true then when you're not in a base directory, it will act as if you are in the default directory structure no matter where you are.
@@ -100,7 +100,7 @@ def unescapePath(p):
     return p;
 
 def eglob(p1, p2, recursive=False): #escaping variant of glob
-    escapedPath=glob.escape(p1)+"/**/"+glob.escape(p2);
+    escapedPath=glob.escape(p1)+"/**/"+glob.escape(p2).replace("[*]", "*"); #&&&Research any others you might not want to be escaped (the asterisk allows you to do wildcard searches for files: e.g. key myPartial*
     return glob.glob(escapedPath, recursive=recursive);
 
 def getApp():
