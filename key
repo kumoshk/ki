@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform;
 
 version="""
-Version 0.8.1
+Version 0.8.2
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -101,7 +101,20 @@ def unescapePath(p):
 
 def eglob(p1, p2, recursive=False): #escaping variant of glob
     escapedPath=glob.escape(p1)+"/**/"+glob.escape(p2).replace("[*]", "*"); #&&&Research any others you might not want to be escaped (the asterisk allows you to do wildcard searches for files: e.g. key myPartial*
-    return glob.glob(escapedPath, recursive=recursive);
+    to_return=glob.glob(escapedPath, recursive=recursive);
+    if settings["openAll"]==False:
+        i=0;
+        while i<len(to_return):
+            if os.path.isdir(to_return[i])==False:
+                return [to_return[i]];
+            if i==len(to_return)-1:
+                return [];
+            i+=1;
+    else:
+        for x in to_return.copy():
+            if os.path.isdir(x):
+                to_return.remove(x);
+    return to_return;
 
 def getApp():
     """
@@ -474,7 +487,7 @@ if __name__=="__main__":
                 if settings["openAll"]==False:
                     subprocess.run([getApp(), allFound[0]]);
                 else:
-                    subprocess.run([getApp(), " ".join(allFound)]);
+                    subprocess.run([getApp()]+allFound);
             except IndexError:
                 yn=None;
                 def chunk():
