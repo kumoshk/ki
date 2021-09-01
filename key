@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform;
 
 version="""
-Version 0.8.2
+Version 0.8.3
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -26,24 +26,34 @@ I discovered that you can actually do a lot of multi-tasking with Termux and Nan
 Key was written using nano in Termux.
 Contact/download:
 My website: www.growspice.com
+Also, see this: key.growspice.com
 Github page: https://github.com/kumoshk/key
 """.strip();
 
 path=os.getcwd();
 def is_exec(fp):
-    #Unimplemented; &&& Untested. It should tell you if a file is executable or not.
-    return bool(oct(int(oct(os.stat(fp).st_mode)[5:], 8))[2:]);
+    #Unimplemented. Tells if the file is executable or not (just with the first chmod digit, though).
+    if int(oct(os.stat(fp).st_mode)[5:][0]) % 2 == 1:
+        return True;
+    else:
+        return False;
+execute_it=False; #If changed to True, "xapp" and "xapps" will be used in place of "app" and "apps".
 settings={}; #One dictionary for all the settings.
 settings["extension"]=".key"; #Unimplemented
 extension=None; #This is to make it global down below, so the getApp() method can use it.
 settings["scriptExtension"]=".ks"; #Unimplemented; Files with this extension, rather than just being opened, can perform various actions (such as specify a list of files to open, open random files, according to a set of likelihoods, etc.).
 settings["app"]="nano"; #This is the default app for opening files; 'apps' below overrides this, however.
-settings["xapp"]="python3"; #Unimplemented; this is the default app to execute files with when they're not already set to be executable.
+settings["xapp"]="cat"; #This is the default app to execute files with when they're not already set to be executable.
 settings["apps"]={}; #Default apps to open the various file extensions. Keys are file extensions and values are the apps to open them.
+settings["xapps"]={}; #xapps is to xapp as apps is to app
+settings["xapps"][".py"]="python3";
+settings["xapps"][".lua"]="lua5.4";
+settings["xapps"][".rb"]="ruby";
+settings["xapps"][".pl"]="perl";
+settings["xapps"][".ly"]="lilypond";
 soundApps="8svx aif aifc aiff aiffc al amb au avr caf cdda cdr cvs cvsd cvu dat dvms f32 f4 f64 f8 fap flac fssd gsm gsrt hcom htk ima ircam la lpc lpc10 lu mat mat4 mat5 maud mp2 mp3 nist ogg opus paf prc pvf raw s1 s16 s2 s24 s3 s32 s4 s8 sb sd2 sds sf sl sln smp snd sndfile sndr sndt sou sox sph sw txw u1 u16 u2 u24 u3 u32 u4 u8 ub ul uw vms voc vorbis vox w64 wav wavpcm wve xa xi m3u pls".split(" ");
 for x in soundApps:
-    settings["apps"]["."+x]="play";
-settings["xapps"]={}; #Unimplemented; xapps is to xapp as apps is to app
+    settings["xapps"]["."+x]="play";
 settings["lastKeyDir"]=None; #Directory of the last key opened.
 settings["defaultDir"]=None; #This is a saved directory for frequent use, which can be changed. You can use it even when you're not in it.
 settings["useDefault"]=False; #If this is true then when you're not in a base directory, it will act as if you are in the default directory structure no matter where you are.
@@ -117,16 +127,17 @@ def eglob(p1, p2, recursive=False): #escaping variant of glob
     return to_return;
 
 def getApp():
-    """
-    if settings["extension"] in settings["apps"]:
-        return settings["apps"][settings["extension"]];
+    global extension;
+    if execute_it==True:
+        if extension in settings["xapps"]:
+            return settings["xapps"][extension];
+        else:
+            return settings["xapp"];
     else:
-        return settings["app"];
-    """
-    if extension in settings["apps"]:
-        return settings["apps"][extension];
-    else:
-        return settings["app"];
+        if extension in settings["apps"]:
+            return settings["apps"][extension];
+        else:
+            return settings["app"];
 
 def addCurrentBaseDir(): #Make the current working directory a base directory.
     global settings, path, save_it;
@@ -159,7 +170,7 @@ Combinable options:
 [Note: You must include a hyphen before the flags, or else before each flag.]
 • -q: reset the app settings. You will lose any configurations that you have made.
 • -o: Toggle whether key opens multiple files with the same name (default is false).
-• -a: If used, the first word you enter after the flags will be the new default app key uses to open files (if you follow it with a file, it will open it in the regular fasion; e.g. `key -a cat test` will open `test.key`, and any subsequent keys opened, with `cat`).
+• -a: If used, the first word you enter after the flags will be the new default app key uses to open files, or to run files if the -x flag is also provided (if you follow it with a file, it will open it in the regular fasion; e.g. `key -a cat test` will open `test.key`, and any subsequent keys opened, with `cat`; assuming python weren't already the default, `key -ax python test.py` will run test.py with python and set python as the default app for running files with -x).
 • -e: This prompts you to set the default file extension.
 • -d: Set the default directory: If no base directory is set, make the current working directory the default directory. If there is at least one base directory, make the current or last-accessed base directory the default directory (in that priority order). You may only have one default directory at a time.
 • -D: Toggle whether to use the default directory (default is False). This overrides everything else (and uses it as your current base directory no matter where you are).
@@ -170,10 +181,13 @@ Combinable options:
 • -n: List the base directories, and the default directory.
 • -h: Print the help.
 • -v: Print the version information.
-• -p: Prompts you for a specific file extension to open with a specific app, every time.
-• -P: Prompts you to undo an specific action performed with -p.
+• -p: Prompts you for a specific file extension to open with a specific app, every time; you can also set the default extension here.
+• -P: Prompts you to undo a specific customization previously made with -p or -X.
 • -2: Toggle whether to open the specified extension instead of the default (this won't work for no extension). Note that if this is set, for instance, typing `key test.key` will open `test.key` instead of `test.key.key` even when the default extension is `.key`, but if you type `test.txt` it will open `test.txt` instead of `test.txt.key` (again, when the default extension is `.key`). The default setting is true.
 • -4: Toggle whether when specified extensions are opened (see -2) they become the new default or not. The default setting is false.
+• -x: This executes the file instead of opening it. For instance, instead of opening a .py file with nano, it may run it with python. This must be set each time you wish to use it (it doesn't toggle a saved variable).
+• -X: This is like -p, except it's for the apps that are used when -x is provided. It's basically a second set of the same thing.
+
 Non-combinable options:
 • --about: About key, contact, etc.
 • --help: Print the help (without the option of doing other stuff at the same time).
@@ -243,8 +257,12 @@ if __name__=="__main__":
                 print("• Open all files at once set to "+str(settings["openAll"])+".");
                 save_it=True
             if "a" in flags: #-p This means the next non-flag group of characters is the new default app to use instead of nano, or whatever.
-                settings["app"]=args[0];
-                print("• Files will now opened with "+settings["app"]+" by default.\n");
+                if "x" in flags:
+                    settings["xapp"]=args[0];
+                    print("• Files will now be run with "+settings["xapp"]+" by default.\n");
+                else:
+                    settings["app"]=args[0];
+                    print("• Files will now be opened with "+settings["app"]+" by default.\n");
                 args=args[1:];
                 save_it=True;
             if "e" in flags: #Set the default extension.
@@ -357,29 +375,39 @@ if __name__=="__main__":
                 whichExtension=None;
                 whichApp=None;
                 print("• Here you can specify which app will correspond to which file extension. (This overrides the default program.)");
-                whichExtension=input("• Please enter a file extension (keep blank for none): ");
+                whichExtension=input("• Please enter a file extension (keep blank for no file extension; type * to set the default app for all unassigned extensions): ");
                 if whichExtension!=None:
                     whichApp=input("• Please enter the name of an app to open it: ");
                 if whichApp!=None:
                     if whichApp.strip()!="":
-                        whichExtension=re.sub(r"^\.*(\w+)", r".\1", whichExtension).strip();
-                        settings["apps"][whichExtension]=whichApp;
-                        save_it=True;
-                        print("• The extension `"+whichExtension+"` is now handled by `"+whichApp+"`");
+                        if whichExtension=="*":
+                            settings["app"]=whichApp;
+                            save_it=True;
+                            print("• All unhandled extensions will now be opened with `"+whichApp+"`.")
+                        else:
+                            whichExtension=re.sub(r"^\.*(\w+)", r".\1", whichExtension).strip();
+                            settings["apps"][whichExtension]=whichApp;
+                            save_it=True;
+                            print("• The extension `"+whichExtension+"` is now handled by `"+whichApp+"`");
                     else:
                         print("• Your app name must be more than whitespace.");
                 else:
                     print("• Default app for file extension unchanged.");
             if "P" in flags: #Undo an action performed with -p.
-                removeEH=input("• Please enter the extension you wish to reset: ");
+                removeEH=input("• Please enter the extension you wish to reset (press * to reset the default extension): ");
                 if removeEH!=None:
-                    removeEH=re.sub(r"^\.*(\w+)", r".\1", removeEH).strip();
-                    if removeEH in settings["apps"]:
-                        del settings["apps"][removeEH];
+                    if removeEH=="*":
+                        settings["app"]=backup["app"];
                         save_it=True;
-                        print("• Extension `"+removeEH+"` reset.");
+                        print("• The default app has been reset to `"+settings["app"]+"`.");
                     else:
-                        print("• That file extension has not been set (so, it cannot be reset).");
+                        removeEH=re.sub(r"^\.*(\w+)", r".\1", removeEH).strip();
+                        if removeEH in settings["apps"]:
+                            del settings["apps"][removeEH];
+                            save_it=True;
+                            print("• Extension `"+removeEH+"` reset.");
+                        else:
+                            print("• That file extension has not been set (so, it cannot be reset).");
                 else:
                     print("• No changes have been made to which apps open which extensions.");
             if "2" in flags: #Toggle whether to open the specified extension if one is specified (instead of the default), and whether to set that specified extension as the default.
@@ -390,6 +418,31 @@ if __name__=="__main__":
                 settings["setOpenDefault"]=not settings["setOpenDefault"];
                 save_it=True;
                 print("• The setting whether to make a specified extension the default has been set to "+str(settings["setOpenDefault"])+".");
+            if "x" in flags: #Toggle the option to execute a file instead of opening it.
+                execute_it=True;
+                print("• The file will be executed instead of opened, where applicable, this time.");
+            if "X" in flags:
+                whichExtension=None;
+                whichApp=None;
+                print("• Here you can specify which app will correspond to which file extension when using the -x flag. (Settings for specific extensions override the default.)");
+                whichExtension=input("• Please enter a file extension (keep blank for no file extension; type * to set the default app for all unassigned extensions): ");
+                if whichExtension!=None:
+                    whichApp=input("• Please enter the name of an app to open it: ");
+                if whichApp!=None:
+                    if whichApp.strip()!="":
+                        if whichExtension=="*":
+                            settings["xapp"]=whichApp;
+                            save_it=True;
+                            print("• All unhandled extensions will now be run with `"+whichApp+"` when the -x flag is given.");
+                        else:
+                            whichExtension=re.sub(r"^\.*(\w+)", r".\1", whichExtension).strip();
+                            settings["xapps"][whichExtension]=whichApp;
+                            save_it=True;
+                            print("• The extension `"+whichExtension+"` is now handled by `"+whichApp+"`");
+                    else:
+                        print("• Your app name must be more than whitespace.");
+                else:
+                    print("• Default app for file extension unchanged.");
         elif pre.startswith("--")==True:
             if pre=="--help":
                 args=[]; #Clear the args so it won't do anything else.
