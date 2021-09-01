@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform;
 
 version="""
-Version 0.8.3
+Version 0.8.4
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -394,22 +394,34 @@ if __name__=="__main__":
                 else:
                     print("• Default app for file extension unchanged.");
             if "P" in flags: #Undo an action performed with -p.
-                removeEH=input("• Please enter the extension you wish to reset (press * to reset the default extension): ");
-                if removeEH!=None:
-                    if removeEH=="*":
-                        settings["app"]=backup["app"];
-                        save_it=True;
-                        print("• The default app has been reset to `"+settings["app"]+"`.");
-                    else:
-                        removeEH=re.sub(r"^\.*(\w+)", r".\1", removeEH).strip();
-                        if removeEH in settings["apps"]:
-                            del settings["apps"][removeEH];
-                            save_it=True;
-                            print("• Extension `"+removeEH+"` reset.");
-                        else:
-                            print("• That file extension has not been set (so, it cannot be reset).");
+                whichapps=input("• Do you wish to reset regular apps or -x apps? (r/x) ");
+                if whichapps not in {"r","x"}:
+                    print("• No opening/running apps reset.");
                 else:
-                    print("• No changes have been made to which apps open which extensions.");
+                    if whichapps=="r":
+                        whichapps=["app", "apps"];
+                    else:
+                        whichapps=["xapp","xapps"];
+                    removeEH=input("• Please enter the extension you wish to reset (press * to reset the default extension): ");
+                    if removeEH!=None:
+                        if removeEH=="*":
+                            settings[whichapps[0]]=backup[whichapps[0]];
+                            save_it=True;
+                            print("• The default app has been reset to `"+settings[whichapps[0]]+"`.");
+                        else:
+                            removeEH=re.sub(r"^\.*(\w+)", r".\1", removeEH).strip();
+                            if removeEH in settings[whichapps[1]]:
+                                try:
+                                    settings[whichapps[1]][removeEH]=backup[whichapps[1]][removeEH];
+                                    print("• Extension `"+removeEH+"` reset to `"+settings[whichapps[1]][removeEH]+"`.");
+                                except KeyError:
+                                    del settings[whichapps[1]][removeEH];
+                                    print("• Extension `"+removeEH+"` reset to the default, `"+settings[whichapps[0]]+"`.");
+                                save_it=True;
+                            else:
+                                print("• That file extension has not been set (so, it cannot be reset).");
+                    else:
+                        print("• No changes have been made to which apps open which extensions.");
             if "2" in flags: #Toggle whether to open the specified extension if one is specified (instead of the default), and whether to set that specified extension as the default.
                 settings["openSpecifiedExt"]=not settings["openSpecifiedExt"];
                 save_it=True;
