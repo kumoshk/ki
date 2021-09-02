@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform, shutil;
 
 version="""
-Version 0.9.4
+Version 0.9.5
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -471,53 +471,53 @@ if __name__=="__main__":
                         print("• Your app name must be more than whitespace.");
                 else:
                     print("• Default app for file extension unchanged.");
-        if "u" in flags: #Prompt to install Ki to your path
-            yn=input("• Please enter a directory path in which to download and the most recent version of Ki: ");
-            if yn!=None:
-                yn=os.path.expanduser(yn);
-                if os.path.isdir(yn)==True:
-                    if perm(yn)==True:
-                        altkipath=os.path.join(yn, "ki");
-                        if os.path.exists(altkipath):
-                            if os.path.isfile(altkipath):
-                                yn3=input("• A file named key already exists at `"+altkipath+"`. Would you like to delete it and download the new version? ");
-                                if yn3 in {"y", "yes"}:
-                                    os.remove(altkipath);
-                                    print("• `"+altkipath+"` deleted.");
+            if "u" in flags: #Prompt to install Ki to your path
+                yn=input("• Please enter a directory path in which to download and the most recent version of Ki: ");
+                if yn!=None:
+                    yn=os.path.expanduser(yn);
+                    if os.path.isdir(yn)==True:
+                        if perm(yn)==True:
+                            altkipath=os.path.join(yn, "ki");
+                            if os.path.exists(altkipath):
+                                if os.path.isfile(altkipath):
+                                    yn3=input("• A file named key already exists at `"+altkipath+"`. Would you like to delete it and download the new version? ");
+                                    if yn3 in {"y", "yes"}:
+                                        os.remove(altkipath);
+                                        print("• `"+altkipath+"` deleted.");
+                                    else:
+                                        #print("• File not downloaded/overwritten."); #See altkipath==None below.
+                                        altkipath=None;
                                 else:
-                                    #print("• File not downloaded/overwritten."); #See altkipath==None below.
-                                    altkipath=None;
+                                    raise Exception("• A directory named `key` exists at `"+altkipath+"`.");
+                            subprocess.run(["wget", "https://raw.githubusercontent.com/kumoshk/ki/main/ki", "-P", yn]);
+                            fileUserGroup=user_group(altkipath);
+                            if fileUserGroup["user"]==0 or fileUserGroup["group"]==0: #0 is root
+                                setPerm(altkipath, getPerm(yn));
+                                permDict=user_group(yn);
+                                shutil.chown(altkipath, user=permDict["user"], group=permDict["group"]);
                             else:
-                                raise Exception("• A directory named `key` exists at `"+altkipath+"`.");
-                        subprocess.run(["wget", "https://raw.githubusercontent.com/kumoshk/ki/main/ki", "-P", yn]);
-                        fileUserGroup=user_group(altkipath);
-                        if fileUserGroup["user"]==0 or fileUserGroup["group"]==0: #0 is root
-                            setPerm(altkipath, getPerm(yn));
-                            permDict=user_group(yn);
-                            shutil.chown(altkipath, user=permDict["user"], group=permDict["group"]);
+                                set_exec(altkipath);
+                            if os.path.exists(altkipath)==True:
+                                yn2=input("• Would you like to add Ki to your path with update-alternatives (requires sudo or root privileges)? (y/n or enter a number for the priority argument with update-alternatives.) ");
+                                if yn2=="y":
+                                    subprocess.run(["update-alternatives", "--install", "/usr/bin/ki", "ki", altkipath, "0"]);
+                                elif yn2!="n" and yn2!=None:
+                                    try:
+                                        int(yn2);
+                                        subprocess.run(["update-alternatives", "--install", "/usr/bin/ki", "ki", altkipath, yn2]);
+                                        print("• Ki has been added to your path.");
+                                    except ValueError:
+                                        print("• Ki has not been set to your path. You did not enter y, n, nor a number.");
+                            elif altkipath==None:
+                                print("• File not downloaded/overwritten.");
+                            else:
+                                print("• Ki did not download correctly. It has not been added to your path.");
                         else:
-                            set_exec(altkipath);
-                        if os.path.exists(altkipath)==True:
-                            yn2=input("• Would you like to add Ki to your path with update-alternatives (requires sudo or root privileges)? (y/n or enter a number for the priority argument with update-alternatives.) ");
-                            if yn2=="y":
-                                subprocess.run(["update-alternatives", "--install", "/usr/bin/ki", "ki", altkipath, "0"]);
-                            elif yn2!="n" and yn2!=None:
-                                try:
-                                    int(yn2);
-                                    subprocess.run(["update-alternatives", "--install", "/usr/bin/ki", "ki", altkipath, yn2]);
-                                    print("• Ki has been added to your path.");
-                                except ValueError:
-                                    print("• Ki has not been set to your path. You did not enter y, n, nor a number.");
-                        elif altkipath==None:
-                            print("• File not downloaded/overwritten.");
-                        else:
-                            print("• Ki did not download correctly. It has not been added to your path.");
+                            print("• You do not have permission to install Ki at `"+yn+"`.");
                     else:
-                        print("• You do not have permission to install Ki at `"+yn+"`.");
+                        print("• The directory you entered does not exist.");
                 else:
-                    print("• The directory you entered does not exist.");
-            else:
-                print("• Ki was not added to your path.");
+                    print("• Ki was not added to your path.");
         elif pre.startswith("--")==True:
             if pre=="--help":
                 args=[]; #Clear the args so it won't do anything else.
