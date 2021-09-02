@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform, shutil;
 
 version="""
-Version 0.9.9
+Version 0.9.10
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -87,7 +87,8 @@ Warnings:
 • Should the program crash, note that it's possible that some data was not saved during that execution of Ki (since the print statements occur before the saving in many instances, in order to make the code more efficient).
 • Improper configuation may result in undesirable effects.
 • You use this software at your own risk. It comes with no guarantees. You assume all responsibility for what happens by using it, etc.
-• Flags are evaluated before the Ki (the file).
+• Flags are evaluated before the key (the file).
+• Flags are not evaluated in any particular order.
 Tips:
 • Use `ls -R` to show the contents of a directory structure recursively.
 • If you need to find the application data, it's at `~/.ki_kumoshk`.
