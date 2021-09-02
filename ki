@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform, shutil;
 
 version="""
-Version 0.9.7
+Version 0.9.8
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -38,20 +38,20 @@ helpString="""
 Definitions:
 • Ki: the name of our program (but the actual script you run is lowercase: `ki`).
 • key: a file that you open with Ki.
-    
+
 Introduction:
 Welcome to Ki, which is designed to make your command-line life easier. It allows you to open a file with a specific name (default) or all the files with that name (searching recursively) within a directory structure, with a program of your choice (nano being the default). For instance, if you are in `~/book/` and you type `ki Sam Jones` it will search `/book/` and all its subdirectories recursively for a file named `Sam Jones.ki`; when it finds one, it will open it with the nano text editor (without changing the current directory).
-    
+
 Note that you must only provide one file name per use of Ki (and you do not need to surround it with quotes, nor escape spaces); you do not need to type `.ki` when using the default settings. You may do those things, however. `.ki` is the default file extension, but you can change it, or make it so no extension is used.
-    
+
 If a file does not exist, Ki will prompt you to create it (and ask where to do so, giving you some convenient options).
-    
+
 Ki saves your decisions for future uses of the program. Ki is not currently designed to be used from a script. It is designed for use by humans.
-    
+
 The name ki (formerly key, but that was taken by Donkey) is inspired by dictionary key value pairs (or entries in an index, such as a glossary, or an actual lexicon). Because entries in such tend to have unique names, opening only one file by that name is the default.
-    
+
 Ki begins each feedback entry (except for such as this help page) with a bullet, in order to make them more readable.
-    
+
 Combinable options:
 [Note: You must include a hyphen before the flags, or else before each flag.]
 • -q: reset the app settings. You will lose any configurations that you have made.
@@ -650,8 +650,16 @@ if __name__=="__main__":
                         save_it=True;
                     if perm(args)==True:
                         subprocess.run(["touch", args]);
-                        print("• "+args+" created.");
-                        subprocess.run([getApp(), args]);
+                        if os.path.isdir(args)==True:
+                            print("• Sorry, a directory named `"+args+"` already exists. Key not created.");
+                        else:
+                            print("• "+args+" created.");
+                            subprocess.run([getApp(), args]);
+                            if os.path.isdir(args):
+                                print("ERROR: `"+args+"` is a directory???");
+                            else:
+                                pass;
+                                #print("HERE"); #Working normally.
                     else:
                         print("• You don't have permission to create `"+args+"` in `"+path+"`.");
                 elif yn=="b":
