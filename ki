@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform, shutil;
 
 version="""
-Version 0.9.6
+Version 0.9.7
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -159,11 +159,16 @@ for x in settings["baseDirs"]:
 def user_group(p):
     stat=os.stat(p);
     return {"user":stat.st_uid, "group":stat.st_gid};
-def perm(dp): #Test to see if you have permission to write in the directory (or else the directory of a file).
-    dp=os.path.dirname(dp);
-    return os.access(dp, os.W_OK | os.X_OK);
 def getPerm(p): #Gets the important part of the permission mask.
     return oct(os.stat(p).st_mode)[-3:];
+def perm(dp): #Test to see if you have permission to write in the directory (or else the directory of a file).
+    global path;
+    dp=os.path.dirname(dp);
+    if dp=="":
+        dp=path;
+    #print(os.access(dp, os.W_OK), os.access(dp, os.X_OK));
+    #print(getPerm(dp));
+    return os.access(dp, os.W_OK | os.X_OK);
 def setPerm(p, permissions): #Sets the permissions (e.g. 755). p is the file or directory path (it's permissions will be set). This function requires sudo privileges.
     subprocess.run(["chmod", "0"+permissions, p]);
 def is_exec(fp):
@@ -648,7 +653,7 @@ if __name__=="__main__":
                         print("• "+args+" created.");
                         subprocess.run([getApp(), args]);
                     else:
-                        print("• You don't have permission to create `"+args+"`.");
+                        print("• You don't have permission to create `"+args+"` in `"+path+"`.");
                 elif yn=="b":
                     if settings["useDefault"]==True and settings["defaultDir"]!=None:
 
