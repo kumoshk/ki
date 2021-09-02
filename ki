@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform, shutil;
 
 version="""
-Version 0.9.10
+Version 0.9.11
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -73,7 +73,7 @@ Combinable options:
 • -4: Toggle whether when specified extensions are opened (see -2) they become the new default or not. The default setting is false.
 • -x: This executes the file instead of opening it. For instance, instead of opening a .py file with nano, it may run it with python. This must be set each time you wish to use it (it doesn't toggle a saved variable).
 • -X: This is like -p, except it's for the apps that are used when -x is provided. It's basically a second set of the same thing.
-• -u: This downloads and installs the latest version of Ki to a directory of your choice (unless Ki has been renamed on Github), and if you're root, it optionally puts it in your path with update-alternatives. Use `sudo python ki -u` if you want to invoke this with root privileges from the current working directory if Ki is in that directory. If you're going to put it in your system path in the update-alterantives step, I might recommend `/opt/bin` in the previous step, but if you're on Termux, the path will be different (WARNING: If you used sudo then ~ will point to root's home directory, and not yours). The default priority number we use with update-alternatives is 0.
+• -u: This downloads the latest version of Ki to a directory of your choice (unless Ki has been renamed on Github), and if you're root, it optionally puts it in your path with update-alternatives. Use `sudo python ki -u` if you want to invoke this with root privileges from the current working directory if Ki is in that directory. If you're going to put it in your system path in the update-alterantives step, I might recommend `/opt/bin` in the previous step, but if you're on Termux, the path will be different (WARNING: If you used sudo then ~ will point to root's home directory, and not yours). The default priority number we use with update-alternatives is 0.
 
 Non-combinable options:
 • --about: About Ki, contact, etc.
