@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform, shutil;
 
 version="""
-Version 0.9.11
+Version 0.9.12
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -56,7 +56,8 @@ Combinable options:
 [Note: You must include a hyphen before the flags, or else before each flag.]
 • -q: reset the app settings. You will lose any configurations that you have made.
 • -o: Toggle whether Ki opens multiple files with the same name (default is false).
-• -a: If used, the first word you enter after the flags will be the new default app Ki uses to open files, or to run files if the -x flag is also provided (if you follow it with a file, it will open it in the regular fasion; e.g. `ki -a cat test` will open `test.ki`, and any subsequent keys opened, with `cat`; assuming python weren't already the default, `ki -ax python test.py` will run test.py with python and set python as the default app for running files with -x).
+• -A: If used, the first word you enter after the flags will be the new default app Ki uses to open files, or to run files if the -x flag is also provided (if you follow it with a file, it will open it in the regular fasion; e.g. `ki -A cat test` will open `test.ki`, and any subsequent keys opened, with `cat`; assuming python weren't already the default, `ki -Ax python test.py` will run test.py with python and set python as the default app for running files with -x).
+• -a: Like -A, except it doesn't change the default app, nor does it affect -x. It just opens with the specified app this one time.
 • -e: This prompts you to set the default file extension.
 • -d: Set the default directory: If no base directory is set, make the current working directory the default directory. If there is at least one base directory, make the current or last-accessed base directory the default directory (in that priority order). You may only have one default directory at a time.
 • -D: Toggle whether to use the default directory (default is False). This overrides everything else (and uses it as your current base directory no matter where you are).
@@ -125,6 +126,7 @@ settings["setOpenDefault"]=False; #Whether opening a file with a specific extens
 settings["openSpecifiedExt"]=True; #Whether you can open extensions that aren't the default just by typing them in (this won't work for blank extensions).
 backup=settings.copy();
 save_it=False; #If set to True, settings will be saved (pickled). Calling saveSettings() sets it back to False.
+oneTimeApp=None;
 
 ######
 
@@ -223,8 +225,10 @@ def eglob(p1, p2, recursive=False): #escaping variant of glob
     return to_return;
 
 def getApp():
-    global extension;
-    if execute_it==True:
+    global extension, oneTimeApp;
+    if oneTimeApp!=None:
+        return oneTimeApp;
+    elif execute_it==True:
         if extension in settings["xapps"]:
             return settings["xapps"][extension];
         else:
@@ -279,7 +283,7 @@ if __name__=="__main__":
                 settings["openAll"]=not settings["openAll"];
                 print("• Open all files at once set to "+str(settings["openAll"])+".");
                 save_it=True
-            if "a" in flags: #-p This means the next non-flag group of characters is the new default app to use instead of nano, or whatever.
+            if "A" in flags: #-p This means the next non-flag group of characters is the new default app to use instead of nano, or whatever.
                 if "x" in flags:
                     settings["xapp"]=args[0];
                     print("• Files will now be run with "+settings["xapp"]+" by default.\n");
@@ -288,6 +292,10 @@ if __name__=="__main__":
                     print("• Files will now be opened with "+settings["app"]+" by default.\n");
                 args=args[1:];
                 save_it=True;
+            if "a" in flags: #Like -A without changing the default app. No point using it with -x, either.
+                oneTimeApp=args[0]; #&&&
+                print("• Your file will open with "+oneTimeApp+", this time.\n");
+                args=args[1:];
             if "e" in flags: #Set the default extension.
                 ext_set=input("Please enter a file extension to be the default (blank for no file extension; `.` for cancel; current default=`"+settings["extension"]+"`): ");
                 if ext_set!=None:
