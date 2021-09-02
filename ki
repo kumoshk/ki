@@ -2,10 +2,10 @@
 
 #Note that `&&&` in a comment by the code means that the section of code is unfinished. `Unimplemented` by a comment means it's unimplemented (but it may or may not be finished). ###### marks the beginning of a significantly different section of the code.
 
-import glob, sys, os, subprocess, re, pickle, platform;
+import glob, sys, os, subprocess, re, pickle, platform, shutil;
 
 version="""
-Version 0.9.2
+Version 0.9.3
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -26,7 +26,7 @@ I'm light-sensitive. I'm a programmer. I'm a writer. I made a text editor / IDE 
 
 I discovered that you can actually do a lot of multi-tasking with Termux and Nano (if you know how and get used to it), but navigating the command-line still required a whole lot of typing, and patience. Although I'm a fast typer, I didn't like having to cd into directories all the the time to do anything, nor having to type the program name, file extension, etc. The idea of Ki came to me. I made it. It worked. I added more features. Now I can get a lot more stuff done in less time, with less likelihood of forgetting stuff before I get to my destination.
 
-Ki was written using nano in Termux; Termux is a great environment and use-case for key (I recommend a bluetooth keyboard).
+Ki was written using nano in Termux, and after considerable development I later (about version 0.9.0) sometimes programmed my own GUI-based editor; Termux is a great environment and use-case for key (I recommend a bluetooth keyboard).
 
 Contact/download:
 My website: www.growspice.com
@@ -73,7 +73,7 @@ Combinable options:
 • -4: Toggle whether when specified extensions are opened (see -2) they become the new default or not. The default setting is false.
 • -x: This executes the file instead of opening it. For instance, instead of opening a .py file with nano, it may run it with python. This must be set each time you wish to use it (it doesn't toggle a saved variable).
 • -X: This is like -p, except it's for the apps that are used when -x is provided. It's basically a second set of the same thing.
-• -u: This downloads and installs the latest version of Ki to a directory of your choice (unless Ki has been renamed on Github), and optionally puts it in your path with update-alternatives. Use `sudo python ki -I` if you want to invoke this with root privileges from the current working directory if Ki is in that directory.
+• -u: This downloads and installs the latest version of Ki to a directory of your choice (unless Ki has been renamed on Github), and optionally puts it in your path with update-alternatives. Use `sudo python ki -u` if you want to invoke this with root privileges from the current working directory if Ki is in that directory. Using -u currently requires root privileges no matter how you use it. If you're going to put it in your system path in the update-alterantives step, I might recommend `/opt/bin` in the previous step, but if you're on Termux, the path will be different (WARNING: If you used sudo then ~ will point to root's home directory, and not yours).
 
 Non-combinable options:
 • --about: About Ki, contact, etc.
@@ -156,10 +156,16 @@ for x in settings["baseDirs"]:
 
 ######
 
-#The following three functions are finished, but unimplemented.
+def user_group(p):
+    stat=os.stat(p);
+    return {"user":stat.st_uid, "group":stat.st_gid};
 def perm(dp): #Test to see if you have permission to write in the directory (or else the directory of a file).
     dp=os.path.dirname(dp);
     return os.access(dp, os.W_OK | os.X_OK);
+def getPerm(p): #Gets the important part of the permission mask.
+    return oct(os.stat(p).st_mode)[-3:];
+def setPerm(p, permissions): #Sets the permissions (e.g. 755). p is the file or directory path (it's permissions will be set). This function requires sudo privileges.
+    subprocess.run(["chmod", "0"+permissions, p]);
 def is_exec(fp):
     #Tells if the file is executable or not.
     return os.access(fp, os.X_OK) #test to see if the file is executable
@@ -466,24 +472,44 @@ if __name__=="__main__":
                 else:
                     print("• Default app for file extension unchanged.");
         if "u" in flags: #Prompt to install Ki to your path
-            yn=input("• Please enter a directory path in which to download and the most recent version of Ki; if you're going to put it in your system path in the next step, I might recommend `/opt/bin`, but if you're on Termux, the path will be different: ");
+            yn=input("• Please enter a directory path in which to download and the most recent version of Ki: ");
             if yn!=None:
                 yn=os.path.expanduser(yn);
                 if os.path.isdir(yn)==True:
                     if perm(yn)==True:
-                        subprocess.run(["wget", "https://raw.githubusercontent.com/kumoshk/ki/main/ki", "-O", "ki", "-P", yn]);
                         altkipath=os.path.join(yn, "ki");
+                        if os.path.exists(altkipath):
+                            if os.path.isfile(altkipath):
+                                yn3=input("• A file named key already exists at `"+altkipath+"`. Would you like to delete it and download the new version? ");
+                                if yn3 in {"y", "yes"}:
+                                    os.remove(altkipath);
+                                    print("• `"+altkipath+"` deleted.");
+                                else:
+                                    #print("• File not downloaded/overwritten."); #See altkipath==None below.
+                                    altkipath=None;
+                            else:
+                                raise Exception("• A directory named `key` exists at `"+altkipath+"`.");
+                        subprocess.run(["wget", "https://raw.githubusercontent.com/kumoshk/ki/main/ki", "-P", yn]);
+                        fileUserGroup=user_group(altkipath);
+                        if fileUserGroup["user"}==0 or fileUserGroup["group"]==0: #0 is root
+                            setPerm(altkipath, getPerm(yn));
+                            permDict=user_group(yn);
+                            shutil.chown(altkipath, user=permDict["user"], group=permDict["group"]);
+                        else:
+                            set_exec(altkipath);
                         if os.path.exists(altkipath)==True:
                             yn2=input("• Would you like to add Ki to your path with update-alternatives (requires sudo or root privileges)? (y/n or enter a number for the priority argument with update-alternatives.) ");
                             if yn2=="y":
-                                subprocess.run(["update-alternatives", "--install", "/usr/bin/ki", "ki", altkeypath, "0"]);
+                                subprocess.run(["update-alternatives", "--install", "/usr/bin/ki", "ki", altkipath, "0"]);
                             elif yn2!="n" and yn2!=None:
                                 try:
                                     int(yn2);
-                                    subprocess.run(["update-alternatives", "--install", "/usr/bin/ki", "ki", altkeypath, yn2]);
+                                    subprocess.run(["update-alternatives", "--install", "/usr/bin/ki", "ki", altkipath, yn2]);
                                     print("• Ki has been added to your path.");
                                 except ValueError:
                                     print("• Ki has not been set to your path. You did not enter y, n, nor a number.");
+                        elif altkipath==None:
+                            print("• File not downloaded/overwritten.");
                         else:
                             print("• Ki did not download correctly. It has not been added to your path.");
                     else:
