@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform;
 
 version="""
-Version 0.9.0
+Version 0.9.1
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -473,13 +473,13 @@ if __name__=="__main__":
                     if perm(yn)==True:
                         subprocess.run(["wget", "https://raw.githubusercontent.com/kumoshk/ki/main/ki", "-P", yn]);
                         if os.path.exists(os.path.join(yn, "ki"))==True:
-                            yn2=input("• Would you like to add Ki to your path with update-alternatives? (y/n or enter a number for the priority argument with update-alternatives.) ");
+                            yn2=input("• Would you like to add Ki to your path with update-alternatives (requires sudo or root privileges)? (y/n or enter a number for the priority argument with update-alternatives.) ");
                             if yn2=="y":
-                                subprocess.run(["update-alternatives", "--install", "/usr/bin/ki ki "+yn, "0"]);
+                                subprocess.run(["update-alternatives", "--install", "/usr/bin/ki", "ki", yn, "0"]);
                             elif yn2!="n" and yn2!=None:
                                 try:
                                     int(yn2);
-                                    subprocess.run(["update-alternatives", "--install", "/usr/bin/ki ki "+yn, yn2]);
+                                    subprocess.run(["update-alternatives", "--install", "/usr/bin/ki", "ki", yn, yn2]);
                                     print("• Ki has been added to your path.");
                                 except ValueError:
                                     print("• Ki has not been set to your path. You did not enter y, n, nor a number.");
