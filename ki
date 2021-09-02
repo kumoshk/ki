@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform, shutil;
 
 version="""
-Version 0.9.8
+Version 0.9.9
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -83,6 +83,7 @@ Special options:
 • Begin search query with a colon (it won't open a key): Find all the files in the directory structure (or base or default directory structure), regardless of file extension (e.g. `ki :my search text` is the same as `grep -rliF --include=\* my\ search\ text /base/directory/**/`, or if it's the current working directory, it's like `grep -rliF --include=\* my\ search\ text ./`).
 
 Warnings:
+• You use Ki at your own risk. It's under development, with possible bugs, and it's a complex program that you might misuse on accident. Your use of it may result in unintentional loss of data.
 • Should the program crash, note that it's possible that some data was not saved during that execution of Ki (since the print statements occur before the saving in many instances, in order to make the code more efficient).
 • Improper configuation may result in undesirable effects.
 • You use this software at your own risk. It comes with no guarantees. You assume all responsibility for what happens by using it, etc.
