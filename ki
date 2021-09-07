@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform, shutil;
 
 version="""
-Version 0.9.12
+Version 0.9.13
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -74,7 +74,7 @@ Combinable options:
 • -4: Toggle whether when specified extensions are opened (see -2) they become the new default or not. The default setting is false.
 • -x: This executes the file instead of opening it. For instance, instead of opening a .py file with nano, it may run it with python. This must be set each time you wish to use it (it doesn't toggle a saved variable).
 • -X: This is like -p, except it's for the apps that are used when -x is provided. It's basically a second set of the same thing.
-• -u: This downloads the latest version of Ki to a directory of your choice (unless Ki has been renamed on Github), and if you're root, it optionally puts it in your path with update-alternatives. Use `sudo python ki -u` if you want to invoke this with root privileges from the current working directory if Ki is in that directory. If you're going to put it in your system path in the update-alterantives step, I might recommend `/opt/bin` in the previous step, but if you're on Termux, the path will be different (WARNING: If you used sudo then ~ will point to root's home directory, and not yours). The default priority number we use with update-alternatives is 0.
+• -u: This downloads the latest version of Ki to a directory of your choice (unless Ki has been renamed on Github), and if you're root, it first prompts you if you wish to overwrite the ki file you are running, and (on at least some systems--not Termux, yet) optionally puts it in your path with update-alternatives. Use `sudo python ki -u` if you want to invoke this with root privileges from the current working directory if Ki is in that directory. If you're going to put it in your system path in the update-alterantives step, I might recommend `/opt/bin` in the previous step, but if you're on Termux, the path will be different (WARNING: If you used sudo then ~ will point to root's home directory, and not yours). The default priority number we use with update-alternatives is 0.
 
 Non-combinable options:
 • --about: About Ki, contact, etc.
@@ -191,6 +191,20 @@ def set_exec(fp, set_it=True): #Make the file executable or not executable
             raise PermissionError("You don't have permission to change the executable status of `"+os.path.basename(fp)+"`.");
         else:
             raise FileNotFoundError("`"+fp+"` does not exist.");
+
+def directoryPath(): #Get the directory path of Ki.
+    proDir=sys.path[0];
+    if os.path.isdir(proDir):
+        return proDir;
+    else:
+        return None;
+
+def programPath(): #Get the file path of Ki.
+    pp=os.path.join(sys.path[0], sys.argv[0]);
+    if os.path.isfile(pp):
+        return pp;
+    else:
+        return None;
 
 multipleFiles=None;
 
@@ -487,7 +501,25 @@ if __name__=="__main__":
                 else:
                     print("• Default app for file extension unchanged.");
             if "u" in flags: #Prompt to install Ki to your path
-                yn=input("• Please enter a directory path in which to download and the most recent version of Ki: ");
+                proDir=directoryPath();
+                pp=programPath();
+                if pp!=None:
+                    if not perm(pp):
+                        pp=None
+                if proDir!=None:
+                    if not perm(proDir):
+                        proDir=None;
+                yn=None;
+                if proDir!=None and pp!=None:
+                    yn=input("• Would you like to overwrite the program you are executing with the update? (Ki thinks your program path is `"+pp+"`, but you should probably check to be sure; y/yes to overwrite, enter anything else to specify you own path.) ");
+                else:
+                    print("pp", pp);
+                    print("proDir", proDir);
+                if yn in {"yes", "y"}:
+                    yn=proDir;
+                else:
+                    yn=None;
+                    yn=input("• Please enter a directory path in which to download and/or install the most recent version of Ki: ");
                 if yn!=None:
                     yn=os.path.expanduser(yn);
                     if os.path.isdir(yn)==True:
@@ -495,23 +527,28 @@ if __name__=="__main__":
                             altkipath=os.path.join(yn, "ki");
                             if os.path.exists(altkipath):
                                 if os.path.isfile(altkipath):
-                                    yn3=input("• A file named `ki` already exists at `"+altkipath+"`. Would you like to delete it and download the new version? ");
+                                    yn3=input("• A file named `ki` already exists at `"+altkipath+"`. Would you like to download the new version and overwrite it? ");
                                     if yn3 in {"y", "yes"}:
+                                        print("• Backing up a copy in the settings, `"+settingsPath+"`,just in case the download fails.");
+                                        shutil.copyfile(altkipath, os.path.join(settingsPath, "ki"));
+                                        set_exec(os.path.join(settingsPath, "ki"));
                                         os.remove(altkipath);
                                         print("• `"+altkipath+"` deleted.");
                                     else:
                                         #print("• File not downloaded/overwritten."); #See altkipath==None below.
                                         altkipath=None;
                                 else:
-                                    raise Exception("• A directory named `key` exists at `"+altkipath+"`.");
+                                    raise Exception("• A directory named `ki` exists at `"+altkipath+"`.");
                             subprocess.run(["wget", "https://raw.githubusercontent.com/kumoshk/ki/main/ki", "-P", yn]);
-                            fileUserGroup=user_group(altkipath);
-                            if fileUserGroup["user"]==0 or fileUserGroup["group"]==0: #0 is root
-                                setPerm(altkipath, getPerm(yn));
-                                permDict=user_group(yn);
-                                shutil.chown(altkipath, user=permDict["user"], group=permDict["group"]);
-                            else:
-                                set_exec(altkipath);
+                            fileUserGroup=None;
+                            if os.path.exists(altkipath)==True:
+                                fileUserGroup=user_group(altkipath);
+                                if fileUserGroup["user"]==0 or fileUserGroup["group"]==0: #0 is root
+                                    setPerm(altkipath, getPerm(yn));
+                                    permDict=user_group(yn);
+                                    shutil.chown(altkipath, user=permDict["user"], group=permDict["group"]);
+                                else:
+                                    set_exec(altkipath);
                             if os.path.exists(altkipath)==True and "SUDO_UID" in os.environ.keys():
                                 yn2=input("• Would you like to add Ki to your path with update-alternatives (requires sudo or root privileges)? (y/n or enter a number for the priority argument with update-alternatives.) ");
                                 if yn2=="y":
@@ -529,6 +566,9 @@ if __name__=="__main__":
                                 print("• File not downloaded.");
                             else:
                                 print("• Ki did not download correctly. It has not been added to your path.");
+                                print("Copying backup file back to original location.");
+                                shutil.copyfile(os.path.join(settingsPath, "ki"), pp);
+                                set_exec(os.path.join(pp));
                         else:
                             print("• You do not have permission to install Ki at `"+yn+"`.");
                     else:
