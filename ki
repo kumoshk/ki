@@ -5,7 +5,7 @@
 import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib;
 
 version="""
-Version 0.9.15
+Version 0.9.16
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -511,9 +511,9 @@ if __name__=="__main__":
                 if proDir!=None and pp!=None:
                     yn=input("• Would you like to overwrite the program you are executing with the update? (Ki thinks your program path is `"+pp+"`, but you should probably check to be sure; y/yes to overwrite, enter anything else to specify you own path.) ");
                 else:
-                    print("pp", pp);
-                    print("proDir", proDir);
-                    #pass;
+                    #print("pp", pp);
+                    #print("proDir", proDir);
+                    pass;
                 if yn in {"yes", "y"}:
                     yn=proDir;
                 else:
