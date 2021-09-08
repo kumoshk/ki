@@ -2,10 +2,10 @@
 
 #Note that `&&&` in a comment by the code means that the section of code is unfinished. `Unimplemented` by a comment means it's unimplemented (but it may or may not be finished). ###### marks the beginning of a significantly different section of the code.
 
-import glob, sys, os, subprocess, re, pickle, platform, shutil;
+import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib;
 
 version="""
-Version 0.9.13
+Version 0.9.14
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -192,19 +192,24 @@ def set_exec(fp, set_it=True): #Make the file executable or not executable
         else:
             raise FileNotFoundError("`"+fp+"` does not exist.");
 
-def directoryPath(): #Get the directory path of Ki.
-    proDir=sys.path[0];
-    if os.path.isdir(proDir):
-        return proDir;
-    else:
-        return None;
-
-def programPath(): #Get the file path of Ki.
+def programPath(sym=False): #Get the file path of Ki.
     pp=os.path.join(sys.path[0], sys.argv[0]);
     if os.path.isfile(pp):
+        if sym==True:
+            pp=str(pathlib.Path(pp).resolve().absolute()); #If the path is such as /usr/bin/ki, then it's a symlink that points somewhere else, and we need to get where it points.
         return pp;
     else:
         return None;
+
+def directoryPath(sym=False): #Get the directory path of Ki.
+    if sym==False:
+        proDir=sys.path[0];
+        if os.path.isdir(proDir):
+            return proDir;
+        else:
+            return None;
+    else:
+        return os.path.dirname(programPath(sym=True));
 
 multipleFiles=None;
 
@@ -501,8 +506,8 @@ if __name__=="__main__":
                 else:
                     print("• Default app for file extension unchanged.");
             if "u" in flags: #Prompt to install Ki to your path
-                proDir=directoryPath();
-                pp=programPath();
+                proDir=directoryPath(sym=True);
+                pp=programPath(sym=True);
                 if pp!=None:
                     if not perm(pp):
                         pp=None
