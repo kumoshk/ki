@@ -2,10 +2,16 @@
 
 #Note that `&&&` in a comment by the code means that the section of code is unfinished. `Unimplemented` by a comment means it's unimplemented (but it may or may not be finished). ###### marks the beginning of a significantly different section of the code.
 
-import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib;
+import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfile, getpass;
 
-version="""
-Version 0.9.16
+#Variables with capital letters aren't meant to change their values during execution.
+
+PN="Ki"; #Program name, used in the documentation.
+FN="ki"; #File name, used in the documentation and other areas.
+VER="0.9.17"; #The current program version.
+
+VERSION=f"""
+Version {VER}
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
 Previous uploads that didn't say the version:
@@ -17,46 +23,47 @@ Errata:
 1. Note that version 0.4.1 was supposed to be 0.4.0.
 """.strip();
 
-about="""
+ABOUT=f"""
 Introduction:
-Ki is a tool to assist you in accessing files via the command-line. If you like complex/organized directory structures, but want a faster or easier way to navigate them, Ki is for you. It was written in Python 3.x.
+{PN} is a tool to assist you in accessing files via the command-line. If you like complex/organized directory structures, but want a faster or easier way to navigate them, {PN} is for you. It was written in Python 3.x.
 
 History:
 I'm light-sensitive. I'm a programmer. I'm a writer. I made a text editor / IDE for my desktop computer, designed for writing and programming. However, my light-sensitivity increased, and I couldn't spend much time on my desktop computer anymore. So, I got a new Android tablet with a built-in screen that filters the light. It works great, but Android isn't the same as good old Xubuntu, and my text editor doesn't work on Android (because it's written in Python with Tkinter as the GUI). Android isn't really designed with productivity for programmers and writers in mind, unfortunately (especially when it comes to things like quickly switching between activities, multitasking, efficiency, speed-of-use, and file managing). So, after examining my Linux installation options, I concluded that it would be a lot of hassle to get my text editor / IDE working on my tablet. So, I decided to use Termux (a command-line Linux), and nano, and learn how to use them for my purposes.
 
-I discovered that you can actually do a lot of multi-tasking with Termux and Nano (if you know how and get used to it), but navigating the command-line still required a whole lot of typing, and patience. Although I'm a fast typer, I didn't like having to cd into directories all the the time to do anything, nor having to type the program name, file extension, etc. The idea of Ki came to me. I made it. It worked. I added more features. Now I can get a lot more stuff done in less time, with less likelihood of forgetting stuff before I get to my destination.
+I discovered that you can actually do a lot of multi-tasking with Termux and Nano (if you know how and get used to it), but navigating the command-line still required a whole lot of typing, and patience. Although I'm a fast typer, I didn't like having to cd into directories all the the time to do anything, nor having to type the program name, file extension, etc. The idea of {PN} came to me. I made it. It worked. I added more features. Now I can get a lot more stuff done in less time, with less likelihood of forgetting stuff before I get to my destination.
 
-Ki was written using nano in Termux, and after considerable development I later (about version 0.9.0) sometimes programmed my own GUI-based editor; Termux is a great environment and use-case for key (I recommend a bluetooth keyboard).
+{PN} was written using nano in Termux, and after considerable development I later (about version 0.9.0) sometimes programmed my own GUI-based editor; Termux is a great environment and use-case for key (I recommend a bluetooth keyboard).
 
 Contact/download:
 My website: www.growspice.com
-Also, see this: ki.growspice.com
-Github page: https://github.com/kumoshk/ki
+Also, see this: {FN}.growspice.com
+Github page: https://github.com/kumoshk/{FN}
 """.strip();
 
-helpString="""
+HELP=f"""
 Definitions:
-• Ki: the name of our program (but the actual script you run is lowercase: `ki`).
-• key: a file that you open with Ki.
+• {PN}: The name of our program.
+• {FN}: The filename of {PN}. This is what you type to execute it; `.{FN}` is also the starting default file extension.
+• key: Any file--with any extension--that you open with {PN}.
 
 Introduction:
-Welcome to Ki, which is designed to make your command-line life easier. It allows you to open a file with a specific name (default) or all the files with that name (searching recursively) within a directory structure, with a program of your choice (nano being the default). For instance, if you are in `~/book/` and you type `ki Sam Jones` it will search `/book/` and all its subdirectories recursively for a file named `Sam Jones.ki`; when it finds one, it will open it with the nano text editor (without changing the current directory).
+Welcome to {PN}, which is designed to make your command-line life easier. It allows you to open a file with a specific name (default) or all the files with that name (searching recursively) within a directory structure, with a program of your choice (nano being the default). For instance, if you are in `~/book/` and you type `{FN} Sam Jones` it will search `/book/` and all its subdirectories recursively for a file named `Sam Jones.{FN}`; when it finds one, it will open it with the nano text editor (without changing the current directory).
 
-Note that you must only provide one file name per use of Ki (and you do not need to surround it with quotes, nor escape spaces); you do not need to type `.ki` when using the default settings. You may do those things, however. `.ki` is the default file extension, but you can change it, or make it so no extension is used.
+Note that you must only provide one file name per use of {PN} (and you do not need to surround it with quotes, nor escape spaces); you do not need to type `.{FN}` when using the default settings. You may do those things, however. `.{FN}` is the default file extension, but you can change it, or make it so no extension is used.
 
-If a file does not exist, Ki will prompt you to create it (and ask where to do so, giving you some convenient options).
+If a file does not exist, {PN} will prompt you to create it (and ask where to do so, giving you some convenient options).
 
-Ki saves your decisions for future uses of the program. Ki is not currently designed to be used from a script. It is designed for use by humans.
+{PN} saves your decisions for future uses of the program. {PN} is not currently designed to be used from a script. It is designed for use by humans.
 
-The name ki (formerly key, but that was taken by Donkey) is inspired by dictionary key value pairs (or entries in an index, such as a glossary, or an actual lexicon). Because entries in such tend to have unique names, opening only one file by that name is the default.
+The name {PN} (formerly key, but that was taken by Donkey) is inspired by dictionary key value pairs (or entries in an index, such as a glossary, or an actual lexicon). Because entries in such tend to have unique names, opening only one file by that name is the default.
 
-Ki begins each feedback entry (except for such as this help page) with a bullet, in order to make them more readable.
+{PN} begins each feedback entry (except for such as this help page) with a bullet, in order to make them more readable.
 
 Combinable options:
 [Note: You must include a hyphen before the flags, or else before each flag.]
 • -q: reset the app settings. You will lose any configurations that you have made.
-• -o: Toggle whether Ki opens multiple files with the same name (default is false).
-• -A: If used, the first word you enter after the flags will be the new default app Ki uses to open files, or to run files if the -x flag is also provided (if you follow it with a file, it will open it in the regular fasion; e.g. `ki -A cat test` will open `test.ki`, and any subsequent keys opened, with `cat`; assuming python weren't already the default, `ki -Ax python test.py` will run test.py with python and set python as the default app for running files with -x).
+• -o: Toggle whether {PN} opens multiple files with the same name (default is false).
+• -A: If used, the first word you enter after the flags will be the new default app {PN} uses to open files, or to run files if the -x flag is also provided (if you follow it with a file, it will open it in the regular fasion; e.g. `{FN} -A cat test` will open `test.{FN}`, and any subsequent keys opened, with `cat`; assuming python weren't already the default, `{FN} -Ax python test.py` will run test.py with python and set python as the default app for running files with -x).
 • -a: Like -A, except it doesn't change the default app, nor does it affect -x. It just opens with the specified app this one time.
 • -e: This prompts you to set the default file extension.
 • -d: Set the default directory: If no base directory is set, make the current working directory the default directory. If there is at least one base directory, make the current or last-accessed base directory the default directory (in that priority order). You may only have one default directory at a time.
@@ -67,32 +74,32 @@ Combinable options:
 • -c: Clear the list of base directories, or remove the current base directory from being a base directory (you will be prompted which to do).
 • -n: List the base directories, and the default directory.
 • -h: Print the help.
-• -v: Print the version information.
+• -v: Print the version information (to save you the bother, it's version {VER}).
 • -p: Prompts you for a specific file extension to open with a specific app, every time; you can also set the default extension here.
 • -P: Prompts you to undo a specific customization previously made with -p or -X.
-• -2: Toggle whether to open the specified extension instead of the default (this won't work for no extension). Note that if this is set, for instance, typing `ki test.ki` will open `test.ki` instead of `test.ki.ki` even when the default extension is `.ki`, but if you type `test.txt` it will open `test.txt` instead of `test.txt.ki` (again, when the default extension is `.ki`). The default setting is true.
+• -2: Toggle whether to open the specified extension instead of the default (this won't work for no extension). Note that if this is set, for instance, typing `{FN} test.{FN}` will open `test.{FN}` instead of `test.{FN}.{FN}` even when the default extension is `.{FN}`, but if you type `test.txt` it will open `test.txt` instead of `test.txt.{FN}` (again, when the default extension is `.{FN}`). The default setting is true.
 • -4: Toggle whether when specified extensions are opened (see -2) they become the new default or not. The default setting is false.
 • -x: This executes the file instead of opening it. For instance, instead of opening a .py file with nano, it may run it with python. This must be set each time you wish to use it (it doesn't toggle a saved variable).
 • -X: This is like -p, except it's for the apps that are used when -x is provided. It's basically a second set of the same thing.
-• -u: This downloads the latest version of Ki to a directory of your choice (unless Ki has been renamed on Github), and if you're root, it first prompts you if you wish to overwrite the ki file you are running, and (on at least some systems--not Termux, yet) optionally puts it in your path with update-alternatives. Use `sudo python ki -u` if you want to invoke this with root privileges from the current working directory if Ki is in that directory. If you're going to put it in your system path in the update-alterantives step, I might recommend `/opt/bin` in the previous step, but if you're on Termux, the path will be different (WARNING: If you used sudo then ~ will point to root's home directory, and not yours). The default priority number we use with update-alternatives is 0.
+• -u: This downloads the latest version of {PN} to a directory of your choice (unless {PN} has been renamed on Github), and if you're root, it first prompts you if you wish to overwrite the {FN} file you are running, and (on at least some systems--not Termux, yet) optionally puts it in your path with update-alternatives. Use `sudo python {FN} -u` if you want to invoke this with root privileges from the current working directory if {PN} is in that directory. If you're going to put it in your system path in the update-alterantives step, I might recommend `/opt/bin` in the previous step, but if you're on Termux, the path will be different (WARNING: If you used sudo then ~ will point to root's home directory, and not yours). The default priority number we use with update-alternatives is 0.
 
 Non-combinable options:
-• --about: About Ki, contact, etc.
+• --about: About {PN}, contact, etc.
 • --help: Print the help (without the option of doing other stuff at the same time).
-• --version: Print the version information.
+• --version: Print the version information. (FYI, it's version {VER}.)
 Special options:
-• Begin search query with a colon (it won't open a key): Find all the files in the directory structure (or base or default directory structure), regardless of file extension (e.g. `ki :my search text` is the same as `grep -rliF --include=\* my\ search\ text /base/directory/**/`, or if it's the current working directory, it's like `grep -rliF --include=\* my\ search\ text ./`).
+• Begin search query with a colon (it won't open a key): Find all the files in the directory structure (or base or default directory structure), regardless of file extension (e.g. `{FN} :my search text` is the same as `grep -rliF --include=\* my\ search\ text /base/directory/**/`, or if it's the current working directory, it's like `grep -rliF --include=\* my\ search\ text ./`).
 
 Warnings:
-• You use Ki at your own risk. It's under development, with possible bugs, and it's a complex program that you might misuse on accident. Your use of it may result in unintentional loss of data.
-• Should the program crash, note that it's possible that some data was not saved during that execution of Ki (since the print statements occur before the saving in many instances, in order to make the code more efficient).
+• You use {PN} at your own risk. It's under development, with possible bugs, and it's a complex program that you might misuse on accident. Your use of it may result in unintentional loss of data.
+• Should the program crash, note that it's possible that some data was not saved during that execution of {PN} (since the print statements occur before the saving in many instances, in order to make the code more efficient).
 • Improper configuation may result in undesirable effects.
 • You use this software at your own risk. It comes with no guarantees. You assume all responsibility for what happens by using it, etc.
 • Flags are evaluated before the key (the file).
 • Flags are not evaluated in any particular order.
 Tips:
 • Use `ls -R` to show the contents of a directory structure recursively.
-• If you need to find the application data, it's at `~/.ki_kumoshk`.
+• If you need to find the application data, it's at `~/.{FN}_kumoshk`.
 """.strip();
 
 ######
@@ -100,7 +107,7 @@ Tips:
 path=os.getcwd();
 execute_it=False; #If changed to True, "xapp" and "xapps" will be used in place of "app" and "apps".
 settings={}; #One dictionary for all the settings.
-settings["extension"]=".ki"; #Unimplemented
+settings["extension"]=f".{FN}"; #Unimplemented
 extension=None; #This is to make it global down below, so the getApp() method can use it.
 settings["scriptExtension"]=".ks"; #Unimplemented; Files with this extension, rather than just being opened, can perform various actions (such as specify a list of files to open, open random files, according to a set of likelihoods, etc.).
 settings["app"]="nano"; #This is the default app for opening files; 'apps' below overrides this, however.
@@ -132,7 +139,7 @@ oneTimeApp=None;
 
 #Make sure the user settings folder exists.
 settingsPath=None;
-settingsPath=os.path.join(os.path.expanduser("~"), ".ki_kumoshk");
+settingsPath=os.path.join(os.path.expanduser("~"), f".{FN}_kumoshk");
 if not os.path.isdir(settingsPath):
     os.makedirs(settingsPath);
 
@@ -271,6 +278,222 @@ def addCurrentBaseDir(): #Make the current working directory a base directory.
     save_it=True;
     return True;
 
+def ask(question, desired=None, pw=False):
+    if question.endswith(" ")==False:
+        question=question+" ";
+    if pw==False:
+        askFunc=input;
+    else:
+        askFunc=getpass.getpass;
+    response=None;
+    if desired==None:
+        return askFunc(question);
+    else:
+        while response not in desired:
+            response=askFunc(question);
+        return response;
+
+def askyn(question, pw=False):
+    return ask(question=question, desired={"yes", "y", "no", "n"}, pw=pw);
+
+def askdir(question, pw=False, ask_file=False, must_exist=True, must_perm=True, default_dir=None, default_dir2=None, default_dir3=None):
+    print("• Enter * to cancel.");
+    if default_dir!=None:
+        print(f"• Enter ** to use the default: `{default_dir}`.");
+    if default_dir2!=None:
+        print(f"• Enter *** to use the program directory: `{default_dir2}`");
+    if default_dir3!=None:
+        print(f"• Enter **** to use the home bin directory: `{default_dir3}`");
+    if question.endswith(" ")!=True:
+        question=question+" ";
+    if pw==False:
+        askFunc=input;
+    else:
+        askFunc=getpass.getpass;
+    response=None;
+    while 1:
+        response=askFunc(question);
+        if response=="" or response=="." or response=="./":
+            response=os.path.expanduser(path);
+        if response=="*":
+            return None;
+        if response=="**" and default_dir!=None:
+            response=default_dir;
+        if response=="***" and default_dir2!=None:
+            response=default_dir2;
+        if response=="****" and default_dir3!=None:
+            response=default_dir3;
+        response=os.path.expanduser(response);
+        response=os.path.abspath(response);
+        if os.path.exists(response) and must_exist==True:
+            if os.path.isdir(response):
+                if ask_file==False:
+                    if must_perm==True:
+                        if perm(response):
+                            return response;
+                        else:
+                            print(f"• You do not have permission to write in `{response}`. Try another path.");
+                    else:
+                        return response;
+                else:
+                    print(f"• The path, `{response}`, is not a file. Please try another path.");
+            else:
+                if ask_file==False:
+                    print(f"• The path, `{response}`, is not a directory. Please try another path.");
+                else:
+                    return response;
+        elif must_exist==False:
+            if ask_file==False:
+                if must_perm==True:
+                    if perm(response):
+                        return response;
+                    else:
+                        print(f"• You do not have permission to write in `{response}`. Please try another path.");
+                else:
+                    return response;
+            else:
+                return response;
+        else: #must_exist==True and the file exist:
+            createyn=askyn(f"The path, `{response}` does not exist. Would you like to create it?");
+            if createyn in {"yes", "y"}:
+                os.makedirs(response);
+                if not os.path.isdir(response):
+                    print(f"• `{response}` not created. You likely don't have permission. Try another path.");
+                else:
+                    print(f"• `{response}` created.");
+                    return response;
+            else:
+                print(f"• Please try another path.");
+    return response;
+
+def askfile(question, pw=False, ask_dir=False):
+    #Permissions are not tested for files.
+    return askdir(question=question, pw=pw, ask_file=True);
+
+def updateProgram(): #Update the program
+    global path;
+    with tempfile.TemporaryDirectory() as DIR:
+        print("• Downloading the update to a temporary directory.");
+        tempDownload=os.path.join(DIR, FN);
+        subprocess.run(["wget", "https://raw.githubusercontent.com/kumoshk/"+PN.lower().replace(" ", "-")+f"/main/{FN}", "-P", DIR]);
+        if os.path.exists(tempDownload)==False:
+            print(f"• Downloading the update failed. {PN} not updated.");
+        else:
+            proDir=directoryPath();
+            pp=programPath();
+            if pp!=None:
+                if not perm(pp):
+                    pp=None
+            if proDir!=None:
+                if not perm(proDir):
+                    proDir=None;
+            yn=None;
+            updatePath=None;
+            def updateLocal():
+                recommendedPath="/opt/bin";
+                if path.startswith("/data/data/com.termux/files/"):
+                    recommendedPath="/data/data/com.termux/files/usr/opt/bin";
+                upDir=askdir(f"• Please enter a path in which to install {PN}:", default_dir=recommendedPath, default_dir2=os.path.dirname(pp), default_dir3="~/bin");
+                if upDir==None:
+                    print("• Update canceled");
+                    return False;
+                updatePath=os.path.join(os.path.expanduser(upDir), FN);
+                if os.path.exists(updatePath):
+                    if os.path.isdir(updatePath):
+                        print(f"• A directory exists in that location. {PN} not updated.");
+                        return False;
+                    else:
+                        overwrite=askyn(f"• `{updatePath}` already exists. Would you like to overwrite? ");
+                        if overwrite in {"yes", "y"}:
+                            return True, updatePath;
+                        else:
+                            print(f"• File not overwritten. {PN} not updated.");
+                            return False;
+                else:
+                    #updatePath doesn't exist; make it.
+                    return True, updatePath;
+                #End updateLocal()
+            if proDir!=None and pp!=None:
+                ulresult=updateLocal();
+                if ulresult==False:
+                    return False;
+                else:
+                    updatePath=ulresult[1];
+                print("We have permission.");
+                if os.path.exists(updatePath):
+                    os.remove(updatePath);
+                #print(tempDownload, updatePath);
+                shutil.copyfile(tempDownload, updatePath);
+                fileUserGroup=None;
+                if os.path.exists(updatePath)==True:
+                    fileUserGroup=user_group(updatePath);
+                    if fileUserGroup["user"]==0 or fileUserGroup["group"]==0: #0 is root
+                        setPerm(updatePath, getPerm(os.path.dirname(updatePath)));
+                        permDict=user_group(os.path.dirname(updatePath));
+                        shutil.chown(updatePath, user=permDict["user"], group=permDict["group"]);
+                    else:
+                        set_exec(updatePath);
+                print(f"• {PN} successfully updated.");
+                inPath=False;
+                for x in sys.path:
+                    if x==updatePath:
+                        inPath=True;
+                        break;
+                    elif os.path.isfile(os.path.join(x, FN))==True:
+                        inPath==True;
+                        break;
+                putInPath=None;
+                putInPath=askyn(f"• Would you like to put {PN} in your path? ");
+                if putInPath in {"y", "yes"}:
+                    if os.path.exists(updatePath)==True and "SUDO_UID" in os.environ.keys():
+                        #Add to path for all users
+                        if inPath==True:
+                            yn=None;
+                            yn=askyn(f"• There are already one or more programs called `{FN}` in your path. Remove it/them and update? ");
+                            if yn in {"yes", "y"}:
+                                subprocess.run(["update-alternatives", "--remove-all", FN]);
+                        subprocess.run(["update-alternatives", "--install", f"/usr/bin/{FN}", FN, updatePath, "0"]);
+                    else:
+                        #Add to path for current user
+                        bashrc=os.path.expanduser("~/.bashrc");
+                        FN2path=f"export PATH=$PATH:{os.path.expanduser(updatePath)}";
+                        bin2path=f"export PATH=$PATH:{os.path.expanduser('~/bin')}";
+                        opt2path=f"export PATH=$PATH:{os.path.expanduser('/opt/bin')}";
+                        if path.startswith("/data/data/com.termux/files/"):
+                            opt2path=f"export PATH=$PATH:/data/data/com.termux/files/usr/opt/bin";
+                        if os.path.isdir(bashrc):
+                            print(f"• Error. `{bashrc} is a directory when it should be a file.` Not added to path.");
+                            return None;
+                        elif os.path.isfile(bashrc):
+                            #Appending it to ~/.bashrc
+                            with open(bashrc, "r") as FILE:
+                                bashrcContents=FILE.read();
+                                bashrcSplit=bashrcContents.split("\n");
+                                if opt2path not in bashrcSplit:
+                                    with open(bashrc, "a") as FILE2:
+                                        FILE2.write(f"\n{opt2path}");
+                                if bin2path not in bashrcSplit:
+                                    with open(bashrc, "a") as FILE2:
+                                        FILE2.write(f"\n{bin2path}");
+                                if FN2path not in bashrcSplit and os.path.dirname(FN2path) not in bashrcSplit:
+                                    with open(bashrc, "a") as FILE2:
+                                        FILE2.write(f"\n{FN2path}");
+                            subprocess.run(f"bash {bashrc}", shell=True);
+                            print(f"Restarted `{bashrc}`.");
+                        else:
+                            #Creating ~/.bashrc and writing it to the path.
+                            with open(bashrc, "w") as FILE:
+                                if os.path.dirname(FN2path) not in {bin2path, opt2path}:
+                                    FILE.write(f"{bin2path}\n{opt2path}\n{FN2path}");
+                                else:
+                                    #print(os.path.dirname(FN2path), {bin2path, opt2path});
+                                    FILE.write(f"{bin2path}\n{opt2path}");
+                            subprocess.run(f"bash {bashrc}", shell=True);
+                            print(f"Restarted `{bashrc}`.");
+                else:
+                    print(f"• {PN} was not put in the path (but if it was already in the path before the update, it should still be there).");
+                    return None;
+
 ######
 
 if __name__=="__main__":
@@ -283,14 +506,14 @@ if __name__=="__main__":
             args=flagSplit[1:];
             flags=flagSplit[0];
             if "q" in flags: #Reset app data
-                yn=input("• Are you sure you want to reset Ki's application data? (y/n) ");
+                yn=input(f"• Are you sure you want to reset {PN}'s application data? (y/n) ");
                 if yn in {"y", "yes"}:
                     settings=backup.copy();
                     baseDir=None;
                     save_it=True;
-                    print("• Ki's application data has been reset.");
+                    print(f"• {PN}'s application data has been reset.");
                 else:
-                    print("• Ki's application data has not been reset.");
+                    print(f"• {PN}'s application data has not been reset.");
             if "o" in flags: #Toggle whetehr to open all files with the name at once (instead of just one). Default is False.
                 settings["openAll"]=not settings["openAll"];
                 print("• Open all files at once set to "+str(settings["openAll"])+".");
@@ -411,9 +634,9 @@ if __name__=="__main__":
                 else:
                     print("• Base directories:\nNone");
             if "h" in flags: #Print the help string.
-                print("\n\n"+helpString+"\n\n");
+                print("\n\n"+HELP+"\n\n");
             if "v" in flags: #Print the version string.
-                print("\n\n"+version+"\n\n");
+                print("\n\n"+VERSION+"\n\n");
             if "p" in flags: #Set a specific extension to open with a specific app.
                 whichExtension=None;
                 whichApp=None;
@@ -499,91 +722,17 @@ if __name__=="__main__":
                 else:
                     print("• Default app for file extension unchanged.");
             if "u" in flags: #Prompt to install Ki to your path
-                proDir=directoryPath();
-                pp=programPath();
-                if pp!=None:
-                    if not perm(pp):
-                        pp=None
-                if proDir!=None:
-                    if not perm(proDir):
-                        proDir=None;
-                yn=None;
-                if proDir!=None and pp!=None:
-                    yn=input("• Would you like to overwrite the program you are executing with the update? (Ki thinks your program path is `"+pp+"`, but you should probably check to be sure; y/yes to overwrite, enter anything else to specify you own path.) ");
-                else:
-                    #print("pp", pp);
-                    #print("proDir", proDir);
-                    pass;
-                if yn in {"yes", "y"}:
-                    yn=proDir;
-                else:
-                    yn=None;
-                    yn=input("• Please enter a directory path in which to download and/or install the most recent version of Ki: ");
-                if yn!=None:
-                    yn=os.path.expanduser(yn);
-                    if os.path.isdir(yn)==True:
-                        if perm(yn)==True:
-                            altkipath=os.path.join(yn, "ki");
-                            if os.path.exists(altkipath):
-                                if os.path.isfile(altkipath):
-                                    yn3=input("• A file named `ki` already exists at `"+altkipath+"`. Would you like to download the new version and overwrite it? ");
-                                    if yn3 in {"y", "yes"}:
-                                        print("• Backing up a copy in the settings, `"+settingsPath+"`,just in case the download fails.");
-                                        shutil.copyfile(altkipath, os.path.join(settingsPath, "ki"));
-                                        set_exec(os.path.join(settingsPath, "ki"));
-                                        os.remove(altkipath);
-                                        print("• `"+altkipath+"` deleted.");
-                                    else:
-                                        #print("• File not downloaded/overwritten."); #See altkipath==None below.
-                                        altkipath=None;
-                                else:
-                                    raise Exception("• A directory named `ki` exists at `"+altkipath+"`.");
-                            subprocess.run(["wget", "https://raw.githubusercontent.com/kumoshk/ki/main/ki", "-P", yn]);
-                            fileUserGroup=None;
-                            if os.path.exists(altkipath)==True:
-                                fileUserGroup=user_group(altkipath);
-                                if fileUserGroup["user"]==0 or fileUserGroup["group"]==0: #0 is root
-                                    setPerm(altkipath, getPerm(yn));
-                                    permDict=user_group(yn);
-                                    shutil.chown(altkipath, user=permDict["user"], group=permDict["group"]);
-                                else:
-                                    set_exec(altkipath);
-                            if os.path.exists(altkipath)==True and "SUDO_UID" in os.environ.keys():
-                                yn2=input("• Would you like to add Ki to your path with update-alternatives (requires sudo or root privileges)? (y/n or enter a number for the priority argument with update-alternatives.) ");
-                                if yn2=="y":
-                                    subprocess.run(["update-alternatives", "--install", "/usr/bin/ki", "ki", altkipath, "0"]);
-                                elif yn2!="n" and yn2!=None:
-                                    try:
-                                        int(yn2);
-                                        subprocess.run(["update-alternatives", "--install", "/usr/bin/ki", "ki", altkipath, yn2]);
-                                        print("• Ki has been added to your path.");
-                                    except ValueError:
-                                        print("• Ki has not been set to your path. You did not enter y, n, nor a number.");
-                            elif os.path.exists(altkipath)==True and "SUDO_UID" not in os.environ.keys():
-                                print("• File downloaded successfully.");
-                            elif altkipath==None:
-                                print("• File not downloaded.");
-                            else:
-                                print("• Ki did not download correctly. It has not been added to your path.");
-                                print("Copying backup file back to original location.");
-                                shutil.copyfile(os.path.join(settingsPath, "ki"), pp);
-                                set_exec(os.path.join(pp));
-                        else:
-                            print("• You do not have permission to install Ki at `"+yn+"`.");
-                    else:
-                        print("• The directory you entered does not exist.");
-                else:
-                    print("• Ki was not added to your path.");
+                updateProgram();
         elif pre.startswith("--")==True:
             if pre=="--help":
                 args=[]; #Clear the args so it won't do anything else.
-                print(helpString);
+                print(HELP);
             elif pre=="--version":
                 args=[]; #Clear the args so it won't do anything else.
-                print(version);
+                print(VERSION);
             elif pre=="--about":
                 args=[]; #Clear the args so it won't do anything else.
-                print(about);
+                print(ABOUT);
             elif pre=="--f": #&&&Open multiple filepaths (files with different names) instead of just one name; requires escaped spaces (no unescaped qutoes to handle spaces).
                 multipleFiles=re.split(r"(?<!\\) ", args);
         if len(args)!=0 and args[0].startswith(":")==True:
@@ -779,4 +928,4 @@ if __name__=="__main__":
         try:
             saveSettings();
         except:
-            print("• Exception: Ki's settings changes did not save properly. Did you your launching app shut down properly?");
+            print(f"• Exception: {PN}'s settings changes did not save properly. Did you your launching app shut down properly?");
