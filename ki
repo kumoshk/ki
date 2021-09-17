@@ -8,24 +8,17 @@ import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfil
 
 PN="Ki"; #Program name, used in the documentation.
 FN="ki"; #File name, used in the documentation and other areas.
-VER="0.9.17"; #The current program version.
+VER="0.9.18"; #The current program version.
 
 VERSION=f"""
 Version {VER}
 Each upload to Github constitutes a new version. I only change the version right before the upload, regardless of whatever else I change in the meantime.
 This version only applies to this file (not the other files in the project).
-Previous uploads that didn't say the version:
-1. 0.1.0 (first upload)
-2. 0.1.1 (fixed a typo)
-3. 0.2.0 (added persistent data)
-4. 0.3.0 (lots of changes)
-Errata:
-1. Note that version 0.4.1 was supposed to be 0.4.0.
 """.strip();
 
 ABOUT=f"""
 Introduction:
-{PN} is a tool to assist you in accessing files via the command-line. If you like complex/organized directory structures, but want a faster or easier way to navigate them, {PN} is for you. It was written in Python 3.x.
+{PN} is a tool to assist you in accessing files via the command-line. If you like complex/organized directory structures, but want a faster or easier way to navigate them, {PN} is for you. It was written in Python 3.x. It does not work for Python 2.x.
 
 History:
 I'm light-sensitive. I'm a programmer. I'm a writer. I made a text editor / IDE for my desktop computer, designed for writing and programming. However, my light-sensitivity increased, and I couldn't spend much time on my desktop computer anymore. So, I got a new Android tablet with a built-in screen that filters the light. It works great, but Android isn't the same as good old Xubuntu, and my text editor doesn't work on Android (because it's written in Python with Tkinter as the GUI). Android isn't really designed with productivity for programmers and writers in mind, unfortunately (especially when it comes to things like quickly switching between activities, multitasking, efficiency, speed-of-use, and file managing). So, after examining my Linux installation options, I concluded that it would be a lot of hassle to get my text editor / IDE working on my tablet. So, I decided to use Termux (a command-line Linux), and nano, and learn how to use them for my purposes.
@@ -81,7 +74,7 @@ Combinable options:
 • -4: Toggle whether when specified extensions are opened (see -2) they become the new default or not. The default setting is false.
 • -x: This executes the file instead of opening it. For instance, instead of opening a .py file with nano, it may run it with python. This must be set each time you wish to use it (it doesn't toggle a saved variable).
 • -X: This is like -p, except it's for the apps that are used when -x is provided. It's basically a second set of the same thing.
-• -u: This downloads the latest version of {PN} to a directory of your choice (unless {PN} has been renamed on Github), and if you're root, it first prompts you if you wish to overwrite the {FN} file you are running, and (on at least some systems--not Termux, yet) optionally puts it in your path with update-alternatives. Use `sudo python {FN} -u` if you want to invoke this with root privileges from the current working directory if {PN} is in that directory. If you're going to put it in your system path in the update-alterantives step, I might recommend `/opt/bin` in the previous step, but if you're on Termux, the path will be different (WARNING: If you used sudo then ~ will point to root's home directory, and not yours). The default priority number we use with update-alternatives is 0.
+• -u: Use this to update {PN}. If you wish to do a system-wide update, you'll need to use `sudo python3 ki -u` or `sudo ki -u` (you don't need `sudo` on Termux).
 
 Non-combinable options:
 • --about: About {PN}, contact, etc.
@@ -102,6 +95,21 @@ Tips:
 • If you need to find the application data, it's at `~/.{FN}_kumoshk`.
 """.strip();
 
+NANORC="""set tabsize 4
+set tabstospaces
+set nowrap
+set softwrap
+set autoindent
+set atblanks
+set afterends
+set zap
+set nonewlines
+set multibuffer
+set speller "hunspell -x -c"
+set rawsequences
+bind ^H chopwordleft main
+""";
+
 ######
 
 path=os.getcwd();
@@ -110,6 +118,7 @@ settings={}; #One dictionary for all the settings.
 settings["extension"]=f".{FN}"; #Unimplemented
 extension=None; #This is to make it global down below, so the getApp() method can use it.
 settings["scriptExtension"]=".ks"; #Unimplemented; Files with this extension, rather than just being opened, can perform various actions (such as specify a list of files to open, open random files, according to a set of likelihoods, etc.).
+settings["firstRun"]=True;
 settings["app"]="nano"; #This is the default app for opening files; 'apps' below overrides this, however.
 settings["xapp"]="cat"; #This is the default app to execute files with when they're not already set to be executable.
 settings["apps"]={}; #Default apps to open the various file extensions. Keys are file extensions and values are the apps to open them.
@@ -164,6 +173,118 @@ for x in settings["baseDirs"]:
             settings["baseDir"]=baseDir;
             save_it=True;
         break;
+
+######
+
+def ask(question, desired=None, pw=False):
+    if question.endswith(" ")==False:
+        question=question+" ";
+    if pw==False:
+        askFunc=input;
+    else:
+        askFunc=getpass.getpass;
+    response=None;
+    if desired==None:
+        return askFunc(question);
+    else:
+        while response not in desired:
+            response=askFunc(question);
+        return response;
+
+def askyn(question, pw=False):
+    return ask(question=question, desired={"yes", "y", "no", "n"}, pw=pw);
+
+def askdir(question, pw=False, ask_file=False, must_exist=True, must_perm=True, default_dir=None, default_dir2=None, default_dir3=None):
+    print("• Enter * to cancel.");
+    if default_dir!=None:
+        print(f"• Enter ** to use the default: `{default_dir}`.");
+    if default_dir2!=None:
+        print(f"• Enter *** to use the program directory: `{default_dir2}`");
+    if default_dir3!=None:
+        print(f"• Enter **** to use the home bin directory: `{default_dir3}`");
+    if question.endswith(" ")!=True:
+        question=question+" ";
+    if pw==False:
+        askFunc=input;
+    else:
+        askFunc=getpass.getpass;
+    response=None;
+    while 1:
+        response=askFunc(question);
+        if response=="" or response=="." or response=="./":
+            response=os.path.expanduser(path);
+        if response=="*":
+            return None;
+        if response=="**" and default_dir!=None:
+            response=default_dir;
+        if response=="***" and default_dir2!=None:
+            response=default_dir2;
+        if response=="****" and default_dir3!=None:
+            response=default_dir3;
+        response=os.path.expanduser(response);
+        response=os.path.abspath(response);
+        if os.path.exists(response) and must_exist==True:
+            if os.path.isdir(response):
+                if ask_file==False:
+                    if must_perm==True:
+                        if perm(response):
+                            return response;
+                        else:
+                            print(f"• You do not have permission to write in `{response}`. Try another path.");
+                    else:
+                        return response;
+                else:
+                    print(f"• The path, `{response}`, is not a file. Please try another path.");
+            else:
+                if ask_file==False:
+                    print(f"• The path, `{response}`, is not a directory. Please try another path.");
+                else:
+                    return response;
+        elif must_exist==False:
+            if ask_file==False:
+                if must_perm==True:
+                    if perm(response):
+                        return response;
+                    else:
+                        print(f"• You do not have permission to write in `{response}`. Please try another path.");
+                else:
+                    return response;
+            else:
+                return response;
+        else: #must_exist==True and the file exist:
+            createyn=askyn(f"The path, `{response}` does not exist. Would you like to create it?");
+            if createyn in {"yes", "y"}:
+                os.makedirs(response);
+                if not os.path.isdir(response):
+                    print(f"• `{response}` not created. You likely don't have permission. Try another path.");
+                else:
+                    print(f"• `{response}` created.");
+                    return response;
+            else:
+                print(f"• Please try another path.");
+    return response;
+
+def askfile(question, pw=False, ask_dir=False):
+    #Permissions are not tested for files.
+    return askdir(question=question, pw=pw, ask_file=True);
+
+######
+
+#First run stuff
+if settings["firstRun"]==True:
+    settings["firstRun"]=False;
+    save_it=True;
+    nanorc_path="~/.nanorc";
+    nanorc_path=os.path.expanduser(nanorc_path);
+    if os.path.exists(nanorc_path)==False:
+        yn=askyn(f"""Would you like to install some convenient nano settings in `{os.path.join(os.path.expanduser("~/"), ".nanorc")}`? These settings don't work on some versions of nano before 5.8. If it gives you errors when you run nano, either update nano, or delete the `.nanorc` file.""");
+        if yn in {"yes", "y"}:
+            print("For tips on how to use nano, see\n<https://www.growspice.com/A-desktop-user-s-guide-to-Nano-a-command-line-text-editor-td3471.html>.");
+            with open(nanorc_path, "w") as FILE:
+                FILE.write(NANORC);
+            print("`.nanorc settings written.`");
+        else:
+            print("`.nanorc` settings not written.");
 
 ######
 
@@ -278,98 +399,6 @@ def addCurrentBaseDir(): #Make the current working directory a base directory.
     save_it=True;
     return True;
 
-def ask(question, desired=None, pw=False):
-    if question.endswith(" ")==False:
-        question=question+" ";
-    if pw==False:
-        askFunc=input;
-    else:
-        askFunc=getpass.getpass;
-    response=None;
-    if desired==None:
-        return askFunc(question);
-    else:
-        while response not in desired:
-            response=askFunc(question);
-        return response;
-
-def askyn(question, pw=False):
-    return ask(question=question, desired={"yes", "y", "no", "n"}, pw=pw);
-
-def askdir(question, pw=False, ask_file=False, must_exist=True, must_perm=True, default_dir=None, default_dir2=None, default_dir3=None):
-    print("• Enter * to cancel.");
-    if default_dir!=None:
-        print(f"• Enter ** to use the default: `{default_dir}`.");
-    if default_dir2!=None:
-        print(f"• Enter *** to use the program directory: `{default_dir2}`");
-    if default_dir3!=None:
-        print(f"• Enter **** to use the home bin directory: `{default_dir3}`");
-    if question.endswith(" ")!=True:
-        question=question+" ";
-    if pw==False:
-        askFunc=input;
-    else:
-        askFunc=getpass.getpass;
-    response=None;
-    while 1:
-        response=askFunc(question);
-        if response=="" or response=="." or response=="./":
-            response=os.path.expanduser(path);
-        if response=="*":
-            return None;
-        if response=="**" and default_dir!=None:
-            response=default_dir;
-        if response=="***" and default_dir2!=None:
-            response=default_dir2;
-        if response=="****" and default_dir3!=None:
-            response=default_dir3;
-        response=os.path.expanduser(response);
-        response=os.path.abspath(response);
-        if os.path.exists(response) and must_exist==True:
-            if os.path.isdir(response):
-                if ask_file==False:
-                    if must_perm==True:
-                        if perm(response):
-                            return response;
-                        else:
-                            print(f"• You do not have permission to write in `{response}`. Try another path.");
-                    else:
-                        return response;
-                else:
-                    print(f"• The path, `{response}`, is not a file. Please try another path.");
-            else:
-                if ask_file==False:
-                    print(f"• The path, `{response}`, is not a directory. Please try another path.");
-                else:
-                    return response;
-        elif must_exist==False:
-            if ask_file==False:
-                if must_perm==True:
-                    if perm(response):
-                        return response;
-                    else:
-                        print(f"• You do not have permission to write in `{response}`. Please try another path.");
-                else:
-                    return response;
-            else:
-                return response;
-        else: #must_exist==True and the file exist:
-            createyn=askyn(f"The path, `{response}` does not exist. Would you like to create it?");
-            if createyn in {"yes", "y"}:
-                os.makedirs(response);
-                if not os.path.isdir(response):
-                    print(f"• `{response}` not created. You likely don't have permission. Try another path.");
-                else:
-                    print(f"• `{response}` created.");
-                    return response;
-            else:
-                print(f"• Please try another path.");
-    return response;
-
-def askfile(question, pw=False, ask_dir=False):
-    #Permissions are not tested for files.
-    return askdir(question=question, pw=pw, ask_file=True);
-
 def updateProgram(): #Update the program
     global path;
     with tempfile.TemporaryDirectory() as DIR:
@@ -436,11 +465,13 @@ def updateProgram(): #Update the program
                 print(f"• {PN} successfully updated.");
                 inPath=False;
                 for x in sys.path:
+                    x=os.path.expanduser(x);
+                    x=os.path.abspath(x);
                     if x==updatePath:
                         inPath=True;
                         break;
                     elif os.path.isfile(os.path.join(x, FN))==True:
-                        inPath==True;
+                        inPath=True;
                         break;
                 putInPath=None;
                 putInPath=askyn(f"• Would you like to put {PN} in your path? ");
@@ -506,7 +537,7 @@ if __name__=="__main__":
             args=flagSplit[1:];
             flags=flagSplit[0];
             if "q" in flags: #Reset app data
-                yn=input(f"• Are you sure you want to reset {PN}'s application data? (y/n) ");
+                yn=askyn(f"• Are you sure you want to reset {PN}'s application data? (y/n) ");
                 if yn in {"y", "yes"}:
                     settings=backup.copy();
                     baseDir=None;
@@ -550,7 +581,7 @@ if __name__=="__main__":
                     print("• The default file extension has not been changed.");
             if "d" in flags: #Make the current or last-accessed base directory the default directory, or if there is none, make the current working directory the default directory (and a base directory).
                 if settings["baseDir"]==None:
-                    yn=input("• No base directories exist. Would you like to make the current working directory a base directory (and the default directory)? (y/n) ");
+                    yn=askyn("• No base directories exist. Would you like to make the current working directory a base directory (and the default directory)? (y/n) ");
                     if yn in {"y", "yes"}:
                         addCurrentBaseDir();
                         #settings["baseDirs"].add(path);
@@ -587,7 +618,7 @@ if __name__=="__main__":
                 if baseDir==None:
                     print("• You are not in a base directory structure and so cannot remove it from being a base directory (because it isn't one). No base directory removed from being a base directory.");
                 else:
-                    yn=input("• Are you sure you want to remove the current base directory from being a base directory? FYI, if so, if it's the default directory, it will no longer be the default. (y/n) ");
+                    yn=askyn("• Are you sure you want to remove the current base directory from being a base directory? FYI, if so, if it's the default directory, it will no longer be the default. (y/n) ");
                     if yn in {"y", "yes"}:
                         settings["baseDirs"].remove(baseDir);
                         if settings["baseDir"]==baseDir:
@@ -606,7 +637,7 @@ if __name__=="__main__":
                 save_it=True;
             if "c" in flags: #Clear the list of base directories, or remove the current base directory from being a base directory.
                 if len(settings["baseDirs"])>0:
-                    yn=input("• Are you sure you want to clear the following base directories?\n"+"\n".join(settings["baseDirs"])+"\n(y/n; press c to remove only the current base directory.) ");
+                    yn=ask("• Are you sure you want to clear the following base directories?\n"+"\n".join(settings["baseDirs"])+"\n(y/n; press c to remove only the current base directory.) ", desired={"yes", "y", "no", "n", "c"});
                     if yn in {"y", "yes"}:
                         settings["baseDirs"].clear();
                         save_it=True;
@@ -660,7 +691,7 @@ if __name__=="__main__":
                 else:
                     print("• Default app for file extension unchanged.");
             if "P" in flags: #Undo an action performed with -p.
-                whichapps=input("• Do you wish to reset regular apps or -x apps? (r/x) ");
+                whichapps=ask("• Do you wish to reset regular apps or -x apps? (r/x) ", desired={"r", "x"});
                 if whichapps not in {"r","x"}:
                     print("• No opening/running apps reset.");
                 else:
@@ -833,13 +864,13 @@ if __name__=="__main__":
                         #return settings["defaultDir"].startswith(path+os.sep);
                         return path.startswith(settings["defaultDir"]+os.sep);
                 if settings["useDefault"]==True and (chunk() or settings["defaultDir"]==path):
-                    yn=input("• "+args+" does not exist.\n• Do you wish to create and open it (n = no; y = current working directory; b = base directory; k = directory of the last key opened?) ");
+                    yn=ask("• "+args+" does not exist.\n• Do you wish to create and open it (n = no; blank = no; y = current working directory; b = base directory; k = directory of the last key opened?) ", desired={"n", "no", "", "y", "yes", "b", "k"});
                 elif settings["useDefault"]==True and settings["defaultDir"]!=None:
-                    yn=input("• "+args+" does not exist.\n• Do you wish to create and open it (n = no; b = base directory; k = directory of the last key opened?) ");
+                    yn=ask("• "+args+" does not exist.\n• Do you wish to create and open it (n = no; blank = no; b = base directory; k = directory of the last key opened?) ", desired={"no", "", "n", "b", "k"});
                     if yn in {"y", "yes"}:
                         yn="n";
                 else:
-                    yn=input("• "+args+" does not exist.\n• Do you wish to create and open it (n = no; y = current working directory; b = base directory; k = directory of the last key opened?) ");
+                    yn=ask("• "+args+" does not exist.\n• Do you wish to create and open it (n = no; blank = no; y = current working directory; b = base directory; k = directory of the last key opened?) ", desired={"y", "yes", "n", "no", "", "b", "k"});
                 if yn in {"y", "yes"}:
                     if settings["lastKeyDir"]!=path:
                         settings["lastKeyDir"]=path;
@@ -882,7 +913,7 @@ if __name__=="__main__":
                             if settings["baseDir"]==None:
                                 print("• "+args+" not created.");
                             else:
-                                yn2=input("• Would you like to create it within the last-accessed base directory? (y/n) ");
+                                yn2=askyn("• Would you like to create it within the last-accessed base directory? (y/n) ");
                                 if yn2 in {"y", "yes"}:
                                     file=os.path.join(settings["baseDir"], os.path.basename(args));
                                     if settings["lastKeyDir"]!=settings["baseDir"]:
