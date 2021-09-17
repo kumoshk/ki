@@ -8,7 +8,7 @@ import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfil
 
 PN="Ki"; #Program name, used in the documentation.
 FN="ki"; #File name, used in the documentation and other areas.
-VER="0.9.18"; #The current program version.
+VER="0.9.19"; #The current program version.
 
 VERSION=f"""
 Version {VER}
@@ -157,6 +157,10 @@ settingsDictPath=os.path.join(settingsPath, "settings_dict.pkl");
 if os.path.exists(settingsDictPath):
     with open(settingsDictPath, "rb") as FILE:
         settings=pickle.load(FILE);
+    for x in backup:
+        if x not in settings:
+            settings[x]=backup[x]; #This is to prevent crashes in old versions of the program when I add new settings.
+            save_it=True;
 
 def saveSettings():
     #Use this wherever you want to save the settings.
@@ -277,9 +281,9 @@ if settings["firstRun"]==True:
     nanorc_path="~/.nanorc";
     nanorc_path=os.path.expanduser(nanorc_path);
     if os.path.exists(nanorc_path)==False:
-        yn=askyn(f"""Would you like to install some convenient nano settings in `{os.path.join(os.path.expanduser("~/"), ".nanorc")}`? These settings don't work on some versions of nano before 5.8. If it gives you errors when you run nano, either update nano, or delete the `.nanorc` file.""");
+        yn=askyn(f"""• Would you like to install some convenient nano settings in `{os.path.join(os.path.expanduser("~/"), ".nanorc")}`? These settings don't work on some versions of nano before 5.8. If it gives you errors when you run nano, either update nano, or delete the `.nanorc` file.""");
         if yn in {"yes", "y"}:
-            print("For tips on how to use nano, see\n<https://www.growspice.com/A-desktop-user-s-guide-to-Nano-a-command-line-text-editor-td3471.html>.");
+            print("• For tips on how to use nano, see\n• <https://www.growspice.com/A-desktop-user-s-guide-to-Nano-a-command-line-text-editor-td3471.html>.\n• If you want the spellcheck to work, don't forget to do `sudo apt-get install hunspell`.");
             with open(nanorc_path, "w") as FILE:
                 FILE.write(NANORC);
             print("`.nanorc settings written.`");
