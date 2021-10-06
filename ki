@@ -2,13 +2,13 @@
 
 #Note that `&&&` in a comment by the code means that the section of code is unfinished. `Unimplemented` by a comment means it's unimplemented (but it may or may not be finished). ###### marks the beginning of a significantly different section of the code.
 
-import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfile, getpass;
+import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfile, getpass, shlex, random, hashlib, datetime;
 
 #Variables with capital letters aren't meant to change their values during execution.
 
 PN="Ki"; #Program name, used in the documentation.
 FN="ki"; #File name, used in the documentation and other areas.
-VER="0.9.19"; #The current program version.
+VER="0.10.0"; #The current program version.
 
 VERSION=f"""
 Version {VER}
@@ -16,21 +16,54 @@ Each upload to Github constitutes a new version. I only change the version right
 This version only applies to this file (not the other files in the project).
 """.strip();
 
+LICENSE=f"""
+Terms:
+* “You” (or “Your”) means an individual or a legal entity exercising rights under this License. For legal entities, “You” includes any entity that controls, is controlled by, or is under common control with You. For purposes of this definition, “control” means (a) the power, direct or indirect, to cause the direction or management of such entity, whether by contract or otherwise, or (b) ownership of more than fifty percent (50%) of the outstanding shares or beneficial ownership of such entity.
+* “Contributor” means each individual or legal entity that creates, contributes to the creation of, or owns the software.
+
+Permissions granted:
+
+Note: The following does not constitute submitting the software to the public domain, but rather describes the sorts of non-exclusive privileges one might be granted to the software via this license:
+
+The software may be used as if it were first published in the 1800s (A.D.), by a reputable commercial publisher, with the software being written by a human (not Kumoshk) who had no heirs (who lived only in the 1800s), such that the software has since passed into the public domain; however it may only be thus used with the rest of the license below in effect, overriding previous statements wherein (and only wherein) they conflict:
+
+This entire license (and each portion thereof) is revokable and changeable by Kumoshk at any time for any reason, without notice.
+
+You are granted no exclusive rights nor any exclusive privileges pertaining to the software.
+
+Disclaimer of Warranty
+The software is provided under this license on an “as is” basis, without warranty of any kind, either expressed, implied, or statutory, including, without limitation, warranties that the software is free of defects, merchantable, fit for a particular purpose or non-infringing. The entire risk as to the quality and performance of the software is with You. Should the software prove defective in any respect, You (not any Contributor) assume the cost of any necessary servicing, repair, or correction. This disclaimer of warranty constitutes an essential part of this license. No use of the software is authorized under this license except under this disclaimer.
+
+Limitation of Liability
+Under no circumstances and under no legal theory, whether tort (including negligence), contract, or otherwise, shall any Contributor, or anyone who distributes the software as permitted above, be liable to You for any direct, indirect, special, incidental, or consequential damages of any character including, without limitation, damages for lost profits, loss of goodwill, work stoppage, computer failure or malfunction, or any and all other commercial damages or losses, even if such party shall have been informed of the possibility of such damages. This limitation of liability shall not apply to liability for death or personal injury resulting from such party’s negligence to the extent applicable law prohibits such limitation. Some jurisdictions do not allow the exclusion or limitation of incidental or consequential damages, so this exclusion and limitation may not apply to You.
+""".strip();
+
+DONATE="";
+if datetime.datetime.today().weekday() not in {5, 6, 0}:
+    DONATE=f"""
+Donations:
+If you wish to donate to the programmer, register at my website and send the administrator (Radishrain) an email through it, Tuesday through Friday, stating the amount you wish to donate. Then, I can request that amount from you via PayPal.
+""".strip();
+
 ABOUT=f"""
 Introduction:
 {PN} is a tool to assist you in accessing files via the command-line. If you like complex/organized directory structures, but want a faster or easier way to navigate them, {PN} is for you. It was written in Python 3.x. It does not work for Python 2.x.
 
 History:
-I'm light-sensitive. I'm a programmer. I'm a writer. I made a text editor / IDE for my desktop computer, designed for writing and programming. However, my light-sensitivity increased, and I couldn't spend much time on my desktop computer anymore. So, I got a new Android tablet with a built-in screen that filters the light. It works great, but Android isn't the same as good old Xubuntu, and my text editor doesn't work on Android (because it's written in Python with Tkinter as the GUI). Android isn't really designed with productivity for programmers and writers in mind, unfortunately (especially when it comes to things like quickly switching between activities, multitasking, efficiency, speed-of-use, and file managing). So, after examining my Linux installation options, I concluded that it would be a lot of hassle to get my text editor / IDE working on my tablet. So, I decided to use Termux (a command-line Linux), and nano, and learn how to use them for my purposes.
+I made {PN} in order to help me with creative writing projects on my tablet, using Termux. Before I made {PN}, using my tablet to create creative works was a painstaking process. Now it's easy (although it could still be improved).
 
-I discovered that you can actually do a lot of multi-tasking with Termux and Nano (if you know how and get used to it), but navigating the command-line still required a whole lot of typing, and patience. Although I'm a fast typer, I didn't like having to cd into directories all the the time to do anything, nor having to type the program name, file extension, etc. The idea of {PN} came to me. I made it. It worked. I added more features. Now I can get a lot more stuff done in less time, with less likelihood of forgetting stuff before I get to my destination.
+About the programmer:
+Religiously, I'm a member of The Church of Jesus Christ of Latter-day Saints (see <churchofjesuschrist.org> and <comeuntochrist.org>). I have a testimony of it. I know God answers prayers (through my experience and others'). I know God loves us. I have a testimony through the Holy Ghost that Joseph Smith saw God the Father and Jesus Christ.
 
-{PN} was written using nano in Termux, and after considerable development I later (about version 0.9.0) sometimes programmed my own GUI-based editor; Termux is a great environment and use-case for key (I recommend a bluetooth keyboard).
+Politically, I'm independent (as in, I belong to no political party).
+I have a lot of interests.
 
 Contact/download:
 My website: www.growspice.com
 Also, see this: {FN}.growspice.com
 Github page: https://github.com/kumoshk/{FN}
+
+{DONATE}
 """.strip();
 
 HELP=f"""
@@ -54,44 +87,74 @@ The name {PN} (formerly key, but that was taken by Donkey) is inspired by dictio
 
 Combinable options:
 [Note: You must include a hyphen before the flags, or else before each flag.]
-• -q: reset the app settings. You will lose any configurations that you have made.
-• -o: Toggle whether {PN} opens multiple files with the same name (default is false).
-• -A: If used, the first word you enter after the flags will be the new default app {PN} uses to open files, or to run files if the -x flag is also provided (if you follow it with a file, it will open it in the regular fasion; e.g. `{FN} -A cat test` will open `test.{FN}`, and any subsequent keys opened, with `cat`; assuming python weren't already the default, `{FN} -Ax python test.py` will run test.py with python and set python as the default app for running files with -x).
-• -a: Like -A, except it doesn't change the default app, nor does it affect -x. It just opens with the specified app this one time.
-• -e: This prompts you to set the default file extension.
-• -d: Set the default directory: If no base directory is set, make the current working directory the default directory. If there is at least one base directory, make the current or last-accessed base directory the default directory (in that priority order). You may only have one default directory at a time.
-• -D: Toggle whether to use the default directory (default is False). This overrides everything else (and uses it as your current base directory no matter where you are).
-• -b: Make the current working directory a base directory (you can have multiple base directories).
-• -r: Remove the current directory (or the current base directory) from being a base directory.
-• -s: Toggle whether to search for the key (file) to open from the base directory (if you are inside a base directory structure). The default is true; so, if you don't want to open keys starting from the base directory that aren't in/under the current directory you're in within that base directory, then you should set this to false.
-• -c: Clear the list of base directories, or remove the current base directory from being a base directory (you will be prompted which to do).
-• -n: List the base directories, and the default directory.
-• -h: Print the help.
-• -v: Print the version information (to save you the bother, it's version {VER}).
-• -p: Prompts you for a specific file extension to open with a specific app, every time; you can also set the default extension here.
-• -P: Prompts you to undo a specific customization previously made with -p or -X.
+• -0: &&& (not implemented, yet) Toggle whether to handle files such as `myFile.{FN}.asc` specially (when `.{FN}` is the default and you type `{PN} myFile`): decrypt them (symmetrically with a passphrase), then open them with the desired app for myExtension, then after the app closes, check to see if the file was saved; if it was saved, prompt to re-encrypt and overwrite the original. In short, this lets you open, edit, and save password-protected files. The default is false.
+• -1: &&& (not implemented, yet) Passphrase-protect (symmetrically encrypt) the key instead of opening it.
 • -2: Toggle whether to open the specified extension instead of the default (this won't work for no extension). Note that if this is set, for instance, typing `{FN} test.{FN}` will open `test.{FN}` instead of `test.{FN}.{FN}` even when the default extension is `.{FN}`, but if you type `test.txt` it will open `test.txt` instead of `test.txt.{FN}` (again, when the default extension is `.{FN}`). The default setting is true.
 • -4: Toggle whether when specified extensions are opened (see -2) they become the new default or not. The default setting is false.
-• -x: This executes the file instead of opening it. For instance, instead of opening a .py file with nano, it may run it with python. This must be set each time you wish to use it (it doesn't toggle a saved variable).
-• -X: This is like -p, except it's for the apps that are used when -x is provided. It's basically a second set of the same thing.
+• -8: Make the current working directory a base directory (you can have more than one).
+• -9: Set the default directory: If no base directory is set, make the current working directory the default directory. If there is at least one base directory, make the current or last-accessed base directory the default directory (in that priority order). You may only have one default directory at a time.
+• -A: If used, the first word you enter after the flags will be the new default app {PN} uses to open files, or to run files if the -x flag is also provided (if you follow it with a file, it will open it in the regular fasion; e.g. `{FN} -A cat test` will open `test.{FN}`, and any subsequent keys opened, with `cat`; assuming python weren't already the default, `{FN} -Ax python test.py` will run test.py with python and set python as the default app for running files with -x).
+• -a: Like -A, except it doesn't change the default app, nor does it affect -x. It just opens with the specified app this one time.
+• -B: Set the current working directory: Set the current working directory to be either the default directory or a base directory; or, give the current working directory's path a name to reference it when you use -b. You will be prompted which to do. See also --go.
+• -b: Specify a named directory structure to search for a key (or keys) to open. (You name them with -B.) Example: If `books` is the name you've given `~/Documents/e-books` then `{FN} -b books Anne of Green Gables` will search `/Documents/e-books` for a key called Anne of Green Gables.ki as if `books` were the default directory (but it's not). This is not compatible with some other flags.
+• -c: Clear the list of base directories, or remove the current base directory from being a base directory (you will be prompted which to do).
+• -D: Toggle whether to use the default directory (default is false). This overrides everything else (and uses it as your current base directory no matter where you are). See also -9, -B, -d, -T, and -t.
+• -d: Toggle whether to use the default directory without saving the setting change (so it's changed for this execution only). See also -9, -B, -D, -T, and -t.
+• -e: This prompts you to set the default file extension.
+• -h: Print the help.
+• -n: List the base directories, any named directories, and the default directory.
+• -o: Toggle whether {PN} opens multiple files with the same name (default is false).
+• -P: Prompts you to undo a specific customization previously made with -p or -X.
+• -p: Prompts you for a specific file extension to open with a specific app, every time; you can also set the default extension here.
+• -q: reset the app settings. You will lose any configurations that you have made.
+• -r: Remove the current directory (or the current base directory) from being a base directory.
+• -s: Toggle whether to search for the key (file) to open from the base directory (if you are inside a base directory structure). The default is true; so, if you don't want to open keys starting from the base directory that aren't in/under the current directory you're in within that base directory, then you should set this to false.
+• -T: Disable the default directory this time only (no change if it is already disabled). See also -9, -B, -D, -d, and -t.
+• -t: Enable the default directory this time only (no change if it is already enabled). See also -9, -B, -D, -d, and -T.
 • -u: Use this to update {PN}. If you wish to do a system-wide update, you'll need to use `sudo python3 ki -u` or `sudo ki -u` (you don't need `sudo` on Termux).
+• -v: Print the version information (to save you the bother, it's version {VER}).
+• -X: This is like -p, except it's for the apps that are used when -x is provided. It's basically a second set of the same thing.
+• -x: This executes the file instead of opening it. For instance, instead of opening a .py file with nano, it may run it with python. This must be set each time you wish to use it (it doesn't toggle a saved variable).
 
 Non-combinable options:
 • --about: About {PN}, contact, etc.
+• --aload: Load an app scheme (which apps open which extensions); separate file extensions and apps by semi-colons or new lines (list the file extension first, followed by the new default app to open it, followed by another file extension, followed by the app to open it, and so on; note that all semi-colons in the file are converted to new lines and all whitespace is stripped, so feel free to indent, add double new lines, or whatever; the first line should be a file extension, the second an app, and so on; it doesn't matter what the scheme is called, nor what it's file extension is; {PN} searches for the scheme file the same as any key, although it will only load one file even if {PN} is set to open all that it finds); e.g. `{FN} --aload myScheme.sch`, with `myScheme.sch` having such as these contents:
+.txt;emacs
+.mp3;play
+.ini;nano
+.ly;lilypond
+• --asave: Save your current app scheme.
+• --g or --go: Go to the last key directory. (FYI, this opens a new shell.) You can also open named directory structures with this: e.g. `{FN} --go books` will take you to `~/Documents/ebooks`, if you've named that path `books`.
 • --help: Print the help (without the option of doing other stuff at the same time).
+• --license: Print the license granted for use of {PN}.
+• --load: This will load {PN}'s application data from a backup file saved with `{FN} --save`. Arguments after the flag constitute the filename of the backed-up settings. If no arguments are supplied, you will be asked for a filepath.
+• --nload: Like `--aload`, but it loads a scheme of named directory structures for use with `{FN} -b`. Preface names with `@` to make their associated paths base directories. The first name prefaced with `$` will be made the default directory (and a base directory). Example:
+$book;~/ebooks
+docs;~/Documents
+bin;~/bin
+@pro;~/Desktop/project
+@pro2;~/Desktop/project2
+• --nsave: Save your current named directory scheme.
+• --save: With no arguments, this will prompt you to save a backup of {PN}'s application data. With arguments, it will use the arguments as your filepath for the new backup.
+• --settings: (Not implemented, yet.) This will print {PN}'s current settings to the screen.
 • --version: Print the version information. (FYI, it's version {VER}.)
+• --xload: Like `--aload`, but it loads an xapp scheme (the scheme of apps for executing files with -x).
+• --xsave: Save your current scheme of apps for executing files with -x.
+
 Special options:
 • Begin search query with a colon (it won't open a key): Find all the files in the directory structure (or base or default directory structure), regardless of file extension (e.g. `{FN} :my search text` is the same as `grep -rliF --include=\* my\ search\ text /base/directory/**/`, or if it's the current working directory, it's like `grep -rliF --include=\* my\ search\ text ./`).
 
 Warnings:
-• You use {PN} at your own risk. It's under development, with possible bugs, and it's a complex program that you might misuse on accident. Your use of it may result in unintentional loss of data.
-• Should the program crash, note that it's possible that some data was not saved during that execution of {PN} (since the print statements occur before the saving in many instances, in order to make the code more efficient).
-• Improper configuation may result in undesirable effects.
-• You use this software at your own risk. It comes with no guarantees. You assume all responsibility for what happens by using it, etc.
+• See the license: i.e. `{PN} --license`
+• Should the program crash, note that it is possible that some data was not saved during that execution of {PN} (since the print statements occur before the saving in many instances, in order to make the code more efficient).
+• Not all combinable flags were intended to be used together. Some flag combinations may result in undesirable effects. Bugs could potentially exist with some combinations.
 • Flags are evaluated before the key (the file).
 • Flags are not evaluated in any particular order.
+• Flags/options may change between versions of {PN}. Always check the help after doing an update.
+• When doing an update, some things may or may not become incompatible that were associated with previous versions of {PN} (such as your saved backups of {PN}'s settings).
+
 Tips:
-• Use `ls -R` to show the contents of a directory structure recursively.
+• Use `tree myDirectory` or `ls -R myDirectory` to show the contents of a directory structure recursively.
 • If you need to find the application data, it's at `~/.{FN}_kumoshk`.
 """.strip();
 
@@ -104,7 +167,6 @@ set atblanks
 set afterends
 set zap
 set nonewlines
-set multibuffer
 set speller "hunspell -x -c"
 set rawsequences
 bind ^H chopwordleft main
@@ -119,7 +181,10 @@ settings["extension"]=f".{FN}"; #Unimplemented
 extension=None; #This is to make it global down below, so the getApp() method can use it.
 settings["scriptExtension"]=".ks"; #Unimplemented; Files with this extension, rather than just being opened, can perform various actions (such as specify a list of files to open, open random files, according to a set of likelihoods, etc.).
 settings["firstRun"]=True;
+settings["gpg_path"]="gpg";
+settings["kicrypt"]=False; #Toggle how to handle such as myfile.ki.asc when .ki is the default and you type ki myfile
 settings["app"]="nano"; #This is the default app for opening files; 'apps' below overrides this, however.
+settings["named_dirs"]={}; #These are your saved directories for you to access by a chosen abstract name, rather than by typing in the path for it.
 settings["xapp"]="cat"; #This is the default app to execute files with when they're not already set to be executable.
 settings["apps"]={}; #Default apps to open the various file extensions. Keys are file extensions and values are the apps to open them.
 settings["xapps"]={}; #xapps is to xapp as apps is to app
@@ -127,7 +192,10 @@ settings["xapps"][".py"]="python3";
 settings["xapps"][".lua"]="lua5.4";
 settings["xapps"][".rb"]="ruby";
 settings["xapps"][".pl"]="perl";
+settings["xapps"][".vala"]="valac";
+settings["xapps"][".gs"]="valac"; #Compiling Genie code
 settings["xapps"][".ly"]="lilypond";
+settings["xapps"][".java"]="javac";
 soundApps="8svx aif aifc aiff aiffc al amb au avr caf cdda cdr cvs cvsd cvu dat dvms f32 f4 f64 f8 fap flac fssd gsm gsrt hcom htk ima ircam la lpc lpc10 lu mat mat4 mat5 maud mp2 mp3 nist ogg opus paf prc pvf raw s1 s16 s2 s24 s3 s32 s4 s8 sb sd2 sds sf sl sln smp snd sndfile sndr sndt sou sox sph sw txw u1 u16 u2 u24 u3 u32 u4 u8 ub ul uw vms voc vorbis vox w64 wav wavpcm wve xa xi m3u pls".split(" ");
 for x in soundApps:
     settings["xapps"]["."+x]="play";
@@ -143,6 +211,7 @@ settings["openSpecifiedExt"]=True; #Whether you can open extensions that aren't 
 backup=settings.copy();
 save_it=False; #If set to True, settings will be saved (pickled). Calling saveSettings() sets it back to False.
 oneTimeApp=None;
+kicrypt=False; #Set to True if we're dealing with an encrypted file.
 
 ######
 
@@ -159,15 +228,18 @@ if os.path.exists(settingsDictPath):
         settings=pickle.load(FILE);
     for x in backup:
         if x not in settings:
+            print(f"`{x}` missing from settings; adding it.");
             settings[x]=backup[x]; #This is to prevent crashes in old versions of the program when I add new settings.
             save_it=True;
+
+useDefault=settings["useDefault"]; #This is so we can do one-time uses of the default-directory, and of not using the default directory.
 
 def saveSettings():
     #Use this wherever you want to save the settings.
     global save_it, settings;
     save_it=False; #To make sure we don't do redundant saves.
     with open(settingsDictPath, "wb") as FILE:
-            pickle.dump(settings, FILE, -1);
+        pickle.dump(settings, FILE, protocol=5);
 
 baseDir=None;
 for x in settings["baseDirs"]:
@@ -383,25 +455,102 @@ def getApp():
         else:
             return settings["app"];
 
-def addCurrentBaseDir(): #Make the current working directory a base directory.
+def addCurrentBaseDir(thePath=None): #Make the current working directory a base directory.
     global settings, path, save_it;
+    whichDir="The current working directory";
+    if thePath==None:
+        thePath=path;
+    else:
+        whichDir=f"`{thePath}`";
     for x in settings["baseDirs"]:
-        if path==x:
-            print("• The current working directory is already a base directory. It cannot be added.");
+        if thePath==x:
+            print(f"• {whichDir} is already a base directory. It cannot be added.");
             return False;
-        elif path.startswith(x+os.sep):
-            print("• The current working directory is already within the directory structure of a base directory. It cannot be added. Here is the base directory:\n"+x);
+        elif thePath.startswith(x+os.sep):
+            print(f"• {whichDir} is already within the directory structure of a base directory. It cannot be added. Here is the base directory:\n"+x);
             return False;
-        elif x==path:
-            print("• The current working directory is already a base directory. It cannot be added.");
+        elif x==thePath:
+            print(f"• {whichDir} is already a base directory. It cannot be added.");
             return False;
-        elif x.startswith(path+os.sep):
-            print("• The current working directory has a base directory within its recursive subdirectories. It cannot be added. Here is the base directory:\n"+x);
+        elif x.startswith(thePath+os.sep):
+            print(f"• {whichDir} has a base directory within its recursive subdirectories. It cannot be added. Here is the base directory:\n"+x);
             return False;
-    settings["baseDirs"].add(path); #path is a global variable.
-    print("• Adding the current working directory to your list of base directories. Here is the new list of all your base directories:\n"+"\n".join(settings["baseDirs"])+"\n");
+    settings["baseDirs"].add(thePath);
+    print(f"• Adding {whichDir.lower()} to your list of base directories. Here is the new list of all your base directories:\n"+"\n".join(settings["baseDirs"])+"\n");
     save_it=True;
     return True;
+
+def setDefaultDir():
+    #Make the current or last-accessed base directory the default directory, or if there is none, make the current working directory the default directory (and a base directory).
+    global path;
+    global settings;
+    global baseDir;
+    global save_it;
+    if settings["baseDir"]==None:
+        yn=askyn("• No base directories exist. Would you like to make the current working directory a base directory (and the default directory)? (y/n) ");
+        if yn in {"y", "yes"}:
+            addCurrentBaseDir();
+            #settings["baseDirs"].add(path);
+            settings["defaultDir"]=path;
+            baseDir=path;
+            settings["baseDir"]=path;
+            print("• The current working directory is now a base directory and the default directory.");
+            save_it=True;
+        else:
+            print("• New default directory not set.");
+    else:
+        if baseDir==None:
+            settings["defaultDir"]=path;
+            itWorked=addCurrentBaseDir();
+            #settings["baseDirs"].add(path);
+            if itWorked==True:
+                print("• The current working directory is now set to be the default directory.");
+            else:
+                print("• The current working directory has not been set to be the default directory.");
+        else:
+            settings["defaultDir"]=settings["baseDir"];
+            if settings["defaultDir"]==baseDir:
+                print("• The current base directory is now set to be the default directory:\n"+settings["defaultDir"]);
+            else:
+                print("• The last-accessed base directory is now set to be the default directory:\n"+settings["defaultDir"]);
+        save_it=True;
+
+def nameDir(): #Name a directory.
+    global path;
+    global save_it;
+    global settings;
+    name=ask(f"• What would you like to name the current working directory (`{path}`)? ");
+    if " " in name:
+        print(f"• No spaces are allowed in abstract directory names. `{path}` not named.");
+    elif name!=None and name!="":
+        ow="0"; #0 is just a value that won't get chosen (since we need to test for None in case of a canceled value).
+        if name in settings["named_dirs"]:
+            ow=askyn(f"• `{settings['named_dirs'][name]}` is already named `{name}`. Would you like to overwrite it?");
+        if ow in {"y", "yes", "0"}:
+            settings["named_dirs"][name]=path;
+            save_it=True;
+            print(f"• `{path}` is now named `{name}`.");
+        else:
+            if ow==None:
+                print(f"• `{path}` not named.");
+            else:
+                print(f"• `{path}` not re-named.");
+    else:
+        print(f"• `{path}` not named.");
+
+def setDir(): #Name a directory, make it a default directory, or make it a base directory.
+    desired={"b", "d", "a", "c"};
+    choice=ask(f"• What would you like to do to the current working directory?\n(d=make it the default directory; a=name the directory; b=make it a base directory; c=nothing): ", desired=desired);
+    if choice=="b":
+        addCurrentBaseDir();
+    elif choice=="d":
+        setDefaultDir();
+    elif choice=="a":
+        nameDir();
+    elif choice=="c":
+        print("• Current working directory not named/renamed, nor made a default, nor made a base directory.");
+    else:
+        assert choice in desired;
 
 def updateProgram(): #Update the program
     global path;
@@ -529,6 +678,186 @@ def updateProgram(): #Update the program
                     print(f"• {PN} was not put in the path (but if it was already in the path before the update, it should still be there).");
                     return None;
 
+def loadScheme(filepath, kind="apps"): #Loads a scheme, such as for which apps ki uses to open which kinds of files, or a named directory scheme.
+    global save_it;
+    global settings;
+    assert kind in {"apps", "xapps", "named_dirs"};
+    f=None;
+    with open(filepath, "r") as FILE:
+        f=FILE.read();
+    f=f.replace(";", "\n");
+    f=re.sub("\n+", "\n", f).strip();
+    lines=f.split("\n");
+    if len(lines)%2!=0:
+        if kind in {"apps", "xapps"}:
+            print(f"• Your chosen file, `{filepath}`, has an odd number of entries. It must be even. An entry is defined as something that is not whitespace that is delimited by new lines and/or semi-colons. Semi-colons are converted to new lines, the first line is a file extension, the second is the app that opens it, the third line is a file extension, the fourth is the app that opens it, etc.");
+        elif kind=="named_dirs":
+            print(f"• Your chosen file, `{filepath}`, has an odd number of entries. It must be even. An entry is defined as something that is not whitespace that is delimited by new lines and/or semi-colons. Semi-colons are converted to new lines, the first line is a directory name, the second is the directory path that it corresponds to, the third line is another name, the fourth is its path, etc.");
+        sys.exit(1);
+    i=0;
+    foundDefaultDir=False;
+    while i<len(lines):
+        fe=lines[i].strip(); #fe=file extension
+        pr=lines[i+1].strip(); #pr=program to open the file extension by default.
+        isDefaultDir=False;
+        isBaseDir=False;
+        if kind=="named_dirs":
+            if fe.startswith("$")==True and foundDefaultDir==False:
+                isDefaultDir=True;
+                foundDefaultDir=True;
+                fe=fe[1:];
+            elif fe.startswith("@")==True:
+                isBaseDir=True;
+                fe=fe[1:];
+            pr=os.path.expanduser(pr);
+            if not os.path.isdir(pr):
+                print(f"• Warning: `{pr}` is not a directory. Not naming it `{fe}`.");
+                i+=2;
+                continue;
+            else:
+                if isBaseDir==True or isDefaultDir==True:
+                    addCurrentBaseDir(thePath=pr)
+                if isDefaultDir==True:
+                    if pr in settings["baseDirs"]:
+                        settings["defaultDir"]=pr;
+                        print(f"• `{pr}` is now the default directory.");
+                    else:
+                        print(f"• `{pr}` not made the default directory.");
+        settings[kind][fe]=pr;
+        if kind=="apps":
+            print(f"• Making `{pr}` the default app to open `{fe}` files.");
+        elif kind=="xapps":
+            print(f"• Making `{pr}` the default app to run `{fe}` files.");
+        elif kind=="named_dirs":
+            print(f"• Making `{fe}` the name for `{pr}`.");
+        save_it=True;
+        i+=2;
+
+whichScheme=None; #Values are None (to not load), "apps", "xapps", or "named_dirs".
+
+######
+
+#Encryption and decryption methods
+
+def temp_uname(ext=None): #Do not delete this method; it isn't temporary
+    #Create a filename that will hopefully crash some hacker programs that try to access it.
+    tmp_filename="";
+    for x in range(random.randint(4,10)):
+        tmp_filename+=chr(random.randint(1113000, 1114111));
+    tmp_filename+=".";
+    for x in range(random.randint(1,10)):
+        tmp_filename+=chr(random.randint(1113000, 1114111));
+    if ext!=None:
+        if ext[0]!=".":
+            ext="."+ext;
+        tmp_filename+=ext;
+    return tmp_filename;
+def hash(filepath, kind="sha3_512"):
+    hash=None;
+    text=None;
+    with open(filepath, "rb") as FILE:
+        text=FILE.read();
+    try:
+        hash=hashlib.new(kind);
+    except AttributeError:
+        #The specified hash doesn't exist.
+        hash=hashlib.new("sha1");
+    try:
+        hash.update(text.encode());
+    except AttributeError:
+        hash.update(text);
+    if kind.startswith("shake_"):
+        return hash.hexdigest(16);
+    else:
+        return hash.hexdigest();
+def gpg_encrypt(filepath, passphrase=None, output=None, alg="AES256", hash="SHA512", compress_alg="BZIP2", compress_lvl="9", iterations="1000000", armor=True):
+    #This is for symmetric encryption.
+    global settings;
+    filepath=os.path.expanduser(filepath);
+    if output!=None:
+        output=os.path.expanduser(output);
+    else:
+        output=os.path.join(os.getcwd(), os.path.basename(filepath)+".asc");
+    if armor==True:
+        armor="a";
+    else:
+        armor="";
+    iterations=str(iterations);
+    compress_level="--compress-level "+compress_lvl;
+    if compress_alg.upper()=="BZIP2":
+        compress_level="--bzip2-compress-level "+compress_lvl;
+    result=None;
+    if passphrase==None:
+        passphrase=getpass.getpass("Please enter your passphrase: ");
+        repassphrase=getpass.getpass("Please re-enter your passphrase: ");
+        if passphrase!=repassphrase:
+            print("Your passphrases do not match. File not encrypted.");
+            return None;
+        elif passphrase==None:
+            print("File not encrypted.");
+            return None;
+    tmp_filename=temp_uname();
+    with tempfile.TemporaryDirectory() as DIR:
+        tmpfilepath=os.path.join(DIR, tmp_filename);
+        with open(tmpfilepath, "w") as FILE:
+            FILE.write(passphrase);
+        if output:
+            result=subprocess.Popen("cat "+tmpfilepath+"|"+settings["gpg_path"]+" --batch --yes --passphrase-fd 0 --force-mdc --s2k-mode 3 --s2k-count "+iterations+" --s2k-cipher-algo "+alg+" --s2k-digest-algo "+hash+" --compress-algo='"+compress_alg+"' "+compress_level+" --output="+shlex.quote(output)+" -"+armor+"c "+shlex.quote(filepath), stdin=subprocess.PIPE, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, shell=True).communicate()[0];
+        else:
+            result=subprocess.Popen("cat "+tmpfilepath+"|"+settings["gpg_path"]+" --batch --yes --passphrase-fd 0 --force-mdc --s2k-mode 3 --s2k-count "+iterations+" --s2k-cipher-algo "+alg+" --s2k-digest-algo "+hash+" --compress-algo='"+compress_alg+"' --compress-level "+compress_lvl+" -"+armor+"c "+shlex.quote(filepath), stdin=subprocess.PIPE, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, shell=True).communicate()[0];
+    return result.strip();
+def crypt(filepath, app):
+    #Decrypt an .x.asc file (where x is any file extension), open the decrypted file, after it closes, check to see if the file has changed, and if it has, encrypt it and write over the old encrypted file.
+    global settings;
+    subprocess.run("echo RELOADAGENT|gpg-connect-agent", shell=True);
+    decryptedfp=temp_uname(); #Filepath for the decrypted file.
+    result=None;
+    with tempfile.TemporaryDirectory() as DIR:
+        decryptedfp=os.path.join(DIR, decryptedfp);
+        passphrase=getpass.getpass("Please enter the passphrase: ");
+        if passphrase!=None:
+            tmp_filename=temp_uname();
+            with tempfile.TemporaryDirectory() as DIR2:
+                tmpfilepath=os.path.join(DIR2, tmp_filename);
+                with open(tmpfilepath, "w") as FILE:
+                    FILE.write(passphrase);
+                result=subprocess.Popen("cat "+shlex.quote(tmpfilepath)+"|"+settings["gpg_path"]+" -d --batch --yes --passphrase-fd 0 --output="+shlex.quote(decryptedfp)+" "+shlex.quote(filepath), stdin=subprocess.PIPE, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0];
+        result=not "decryption failed:" in str(result), str(result); #If it worked, return True and the result. If not, return False and the result.
+        if result[0]==True:
+            print(f"`{filepath}` decrypted and saved to `{decryptedfp}`.");
+            #Hash the decrypted file.
+            theHash=hash(decryptedfp);
+            #Open with app
+            subprocess.run([app, decryptedfp]);
+            #Take a new hash of the decrypted file.
+            newHash=hash(decryptedfp);
+            #Check the hashes to see if changes were saved.
+            if theHash!=newHash:
+                reEncrypt=input(f"Would you like to re-encrypt and overwrite `{filepath}`? (y=yes, same passphrase, n=no, r=yes, new passphrase) ");
+                if reEncrypt=="r":
+                    passphrase=getpass.getpass("Please enter a new passphrase: ");
+                    repassphrase=getpass.getpass("Please re-enter it: ");
+                    if passphrase==None:
+                        print(f"No changes made to `{filepath}`.");
+                    elif passphrase==repassphrase:
+                        reEncrypt="y";
+                    else:
+                        print(f"The passphrase doesn't match. No changes made to `{filepath}`.");
+                if reEncrypt=="y":
+                    #Ask whether to re-encrypt and overwrite.
+                    print(f"Encrypting saved changes to `{encryptedfp}` and overwriting `{filepath}` with the new encrypted file.");
+                    #Re-encrypt
+                    reEncrypted=gpg_encrypt(filpath=decryptedfp, passphrase=passphrase, output=filepath);
+                else:
+                    print(f"No changes made to `{filepath}`.");
+            else:
+                print(f"No changes made to `{filepath}`.");
+        else:
+            print(f"`{filepath}` not decrypted.");
+            print("result", result);
+        subprocess.run("echo RELOADAGENT|gpg-connect-agent", shell=True);
+        return result, reEncrypted; #decryptionResult, re-encryptionResult
+
 ######
 
 if __name__=="__main__":
@@ -540,19 +869,30 @@ if __name__=="__main__":
             flagSplit=flags.split(" ");
             args=flagSplit[1:];
             flags=flagSplit[0];
-            if "q" in flags: #Reset app data
-                yn=askyn(f"• Are you sure you want to reset {PN}'s application data? (y/n) ");
-                if yn in {"y", "yes"}:
-                    settings=backup.copy();
-                    baseDir=None;
-                    save_it=True;
-                    print(f"• {PN}'s application data has been reset.");
+            if flags.replace("-","") in {"aload", "nload", "xload", "help", "about", "version", "go", "license", "asave", "nsave", "xsave", "load", "save", "settings"}:
+                print("• Your chosen flags are arranged like a non-cominable option name. For safety reasons, in case this was an accident, the program will exit here without doing anything else. Use two hyphens for the non-combinable option.");
+                sys.exit(1);
+            if "0" in flags:
+                settings["kicrypt"]=not settings["kicrypt"];
+                save_it=True;
+                if settings["kicrypt"]==True:
+                    print(f"• `.{FN}.asc` files are now handled specially (for encryption/decryption).");
                 else:
-                    print(f"• {PN}'s application data has not been reset.");
-            if "o" in flags: #Toggle whetehr to open all files with the name at once (instead of just one). Default is False.
-                settings["openAll"]=not settings["openAll"];
-                print("• Open all files at once set to "+str(settings["openAll"])+".");
-                save_it=True
+                    print(f"• `.{FN}.asc` files are now handled as any other file.");
+            if "1" in flags:
+                print("• TBA");
+            if "2" in flags: #Toggle whether to open the specified extension if one is specified (instead of the default), and whether to set that specified extension as the default.
+                settings["openSpecifiedExt"]=not settings["openSpecifiedExt"];
+                save_it=True;
+                print("• Open specified extension set to "+str(settings["openSpecifiedExt"])+".");
+            if "4" in flags: #Toggle non-default extension specified as the default.
+                settings["setOpenDefault"]=not settings["setOpenDefault"];
+                save_it=True;
+                print("• The setting whether to make a specified extension the default has been set to "+str(settings["setOpenDefault"])+".");
+            if "8" in flags: #Make the current working directory a base directory
+                addCurrentBaseDir();
+            if "9" in flags: #Make the current or last-accessed base directory the default directory, or if there is none, make the current working directory the default directory (and a base directory).
+                setDefaultDir();
             if "A" in flags: #-p This means the next non-flag group of characters is the new default app to use instead of nano, or whatever.
                 if "x" in flags:
                     settings["xapp"]=args[0];
@@ -566,79 +906,31 @@ if __name__=="__main__":
                 oneTimeApp=args[0]; #&&&
                 print("• Your file will open with "+oneTimeApp+", this time.\n");
                 args=args[1:];
-            if "e" in flags: #Set the default extension.
-                ext_set=input("Please enter a file extension to be the default (blank for no file extension; `.` for cancel; current default=`"+settings["extension"]+"`): ");
-                if ext_set!=None:
-                    if ext_set==".":
-                        print("• The default file extension has not been changed.");
-                    elif ext_set=="":
-                        settings["extension"]=ext_set;
-                        print("• The default file extension is now no extension.\n");
-                        save_it=True;
-                    else:
-                        if ext_set[0]!=".":
-                            ext_set="."+ext_set;
-                        settings["extension"]=ext_set;
-                        print("• The default file extension is now `"+settings["extension"]+"`.\n");
-                        save_it=True;
+            if "B" in flags: #Set the current working directory (to be a base or the default; or give it an abstract name for use later).
+                #addCurrentBaseDir();
+                setDir();
+            if "b" in flags: #Search from a specified directory (by the abstract name you've given it).
+                incflags=set("aBdDt89");
+                badCombo=False;
+                badList="";
+                for x in incflags:
+                    if x in flags:
+                        badCombo=True;
+                        badList+=x;
+                if badCombo==True:
+                    print(f"• The flag(s) `-{badList}` are not combinable with -b; therefore, -b is not being done. Not opening/creating a key.");
+                    args=[];
                 else:
-                    print("• The default file extension has not been changed.");
-            if "d" in flags: #Make the current or last-accessed base directory the default directory, or if there is none, make the current working directory the default directory (and a base directory).
-                if settings["baseDir"]==None:
-                    yn=askyn("• No base directories exist. Would you like to make the current working directory a base directory (and the default directory)? (y/n) ");
-                    if yn in {"y", "yes"}:
-                        addCurrentBaseDir();
-                        #settings["baseDirs"].add(path);
-                        settings["defaultDir"]=path;
+                    abname=args[0];
+                    args=args[1:];
+                    if abname in settings["named_dirs"]:
+                        path=settings["named_dirs"][abname];
                         baseDir=path;
-                        settings["baseDir"]=path;
-                        print("• The current working directory is now a base directory and the default directory.");
-                        save_it=True;
+                        useDefault=False;
+                        os.chdir(path);
                     else:
-                        print("• New default directory not set.");
-                else:
-                    if baseDir==None:
-                        settings["defaultDir"]=path;
-                        itWorked=addCurrentBaseDir();
-                        #settings["baseDirs"].add(path);
-                        if itWorked==True:
-                            print("• The current working directory is now set to be the default directory.");
-                        else:
-                            print("• The current working directory has not been set to be the default directory.");
-                    else:
-                        settings["defaultDir"]=settings["baseDir"];
-                        if settings["defaultDir"]==baseDir:
-                            print("• The current base directory is now set to be the default directory:\n"+settings["defaultDir"]);
-                        else:
-                            print("• The last-accessed base directory is now set to be the default directory:\n"+settings["defaultDir"]);
-                    save_it=True;
-            if "D" in flags: #Toggle whether to use the default directory when you aren't in a base directory.
-                settings["useDefault"]=not settings["useDefault"];
-                print("• Use default directory (when not in a base directory structure) set to "+str(settings["useDefault"])+".");
-                save_it=True;
-            if "b" in flags: #Add the current working directory (not that of the key opened_ to baseDirs.
-                addCurrentBaseDir();
-            if "r" in flags: #Remove the current directory or current base directory from being a base directory.
-                if baseDir==None:
-                    print("• You are not in a base directory structure and so cannot remove it from being a base directory (because it isn't one). No base directory removed from being a base directory.");
-                else:
-                    yn=askyn("• Are you sure you want to remove the current base directory from being a base directory? FYI, if so, if it's the default directory, it will no longer be the default. (y/n) ");
-                    if yn in {"y", "yes"}:
-                        settings["baseDirs"].remove(baseDir);
-                        if settings["baseDir"]==baseDir:
-                            settings["baseDir"]=None;
-                        if settings["defaultDir"]==baseDir:
-                            settings["defaultDir"]=None;
-                            print("• The default directory is no longer set.");
-                        save_it=True;
-                        print("• The current base directory has been removed from being a base directory:\n"+baseDir);
-                        baseDir=None;
-                    else:
-                        print("• The current base directory is unchanged (still a base directory).");
-            if "s" in flags: #Toggle whether to search for the key to open from the base directory (default is True).
-                settings["searchBaseDir"]=not settings["searchBaseDir"];
-                print("• Searching for keys from the base directory set to "+str(settings["searchBaseDir"])+".");
-                save_it=True;
+                        print(f"• `{abname}` is not an abstract directory name. Because of this, if you supplied a key it will not be accessed, nor created this time.");
+                        args=[];
             if "c" in flags: #Clear the list of base directories, or remove the current base directory from being a base directory.
                 if len(settings["baseDirs"])>0:
                     yn=ask("• Are you sure you want to clear the following base directories?\n"+"\n".join(settings["baseDirs"])+"\n(y/n; press c to remove only the current base directory.) ", desired={"yes", "y", "no", "n", "c"});
@@ -662,38 +954,51 @@ if __name__=="__main__":
                         print("• Base directories not cleared.");
                 else:
                     print("• You don't have any base directories set to clear.");
+            if "D" in flags: #Toggle whether to use the default directory when you aren't in a base directory.
+                settings["useDefault"]=not settings["useDefault"];
+                print("• Use default directory (when not in a base directory structure) set to "+str(settings["useDefault"])+".");
+                save_it=True;
+            if "d" in flags: #Make it so the default directory is used (this time only). Or, if the default directory is enabled, this makes it so it isn't used (this time only).
+                useDefault=not useDefault; #Toggle it, without saving settings["useDefault"];
+                if useDefault==True:
+                    print("• Default directory enabled (this time only).");
+                else:
+                    print("• Default directory disabled (this time only).");
+            if "e" in flags: #Set the default extension.
+                ext_set=input("Please enter a file extension to be the default (blank for no file extension; `.` for cancel; current default=`"+settings["extension"]+"`): ");
+                if ext_set!=None:
+                    if ext_set==".":
+                        print("• The default file extension has not been changed.");
+                    elif ext_set=="":
+                        settings["extension"]=ext_set;
+                        print("• The default file extension is now no extension.\n");
+                        save_it=True;
+                    else:
+                        if ext_set[0]!=".":
+                            ext_set="."+ext_set;
+                        settings["extension"]=ext_set;
+                        print("• The default file extension is now `"+settings["extension"]+"`.\n");
+                        save_it=True;
+                else:
+                    print("• The default file extension has not been changed.");
+            if "h" in flags: #Print the help string.
+                print("\n\n"+HELP+"\n\n");
             if "n" in flags: #List the base directories and the default directory.
                 print("• Default directory:\n"+str(settings["defaultDir"]));
                 if len(settings["baseDirs"])>0:
                     print("• Base directories:\n"+"\n".join(settings["baseDirs"]));
                 else:
                     print("• Base directories:\nNone");
-            if "h" in flags: #Print the help string.
-                print("\n\n"+HELP+"\n\n");
-            if "v" in flags: #Print the version string.
-                print("\n\n"+VERSION+"\n\n");
-            if "p" in flags: #Set a specific extension to open with a specific app.
-                whichExtension=None;
-                whichApp=None;
-                print("• Here you can specify which app will correspond to which file extension. (This overrides the default program.)");
-                whichExtension=input("• Please enter a file extension (keep blank for no file extension; type * to set the default app for all unassigned extensions): ");
-                if whichExtension!=None:
-                    whichApp=input("• Please enter the name of an app to open it: ");
-                if whichApp!=None:
-                    if whichApp.strip()!="":
-                        if whichExtension=="*":
-                            settings["app"]=whichApp;
-                            save_it=True;
-                            print("• All unhandled extensions will now be opened with `"+whichApp+"`.")
-                        else:
-                            whichExtension=re.sub(r"^\.*(\w+)", r".\1", whichExtension).strip();
-                            settings["apps"][whichExtension]=whichApp;
-                            save_it=True;
-                            print("• The extension `"+whichExtension+"` is now handled by `"+whichApp+"`");
-                    else:
-                        print("• Your app name must be more than whitespace.");
+                if len(settings["named_dirs"])==0:
+                    print("• There are no named directories.");
                 else:
-                    print("• Default app for file extension unchanged.");
+                    print("• Named directories:")
+                    for k,v in settings["named_dirs"].items():
+                        print(f"`{k}`: `{v}`");
+            if "o" in flags: #Toggle whetehr to open all files with the name at once (instead of just one). Default is False.
+                settings["openAll"]=not settings["openAll"];
+                print("• Open all files at once set to "+str(settings["openAll"])+".");
+                save_it=True
             if "P" in flags: #Undo an action performed with -p.
                 whichapps=ask("• Do you wish to reset regular apps or -x apps? (r/x) ", desired={"r", "x"});
                 if whichapps not in {"r","x"}:
@@ -723,17 +1028,74 @@ if __name__=="__main__":
                                 print("• That file extension has not been set (so, it cannot be reset).");
                     else:
                         print("• No changes have been made to which apps open which extensions.");
-            if "2" in flags: #Toggle whether to open the specified extension if one is specified (instead of the default), and whether to set that specified extension as the default.
-                settings["openSpecifiedExt"]=not settings["openSpecifiedExt"];
+            if "p" in flags: #Set a specific extension to open with a specific app.
+                whichExtension=None;
+                whichApp=None;
+                print("• Here you can specify which app will correspond to which file extension. (This overrides the default program.)");
+                whichExtension=input("• Please enter a file extension (keep blank for no file extension; type * to set the default app for all unassigned extensions): ");
+                if whichExtension!=None:
+                    whichApp=input("• Please enter the name of an app to open it: ");
+                if whichApp!=None:
+                    if whichApp.strip()!="":
+                        if whichExtension=="*":
+                            settings["app"]=whichApp;
+                            save_it=True;
+                            print("• All unhandled extensions will now be opened with `"+whichApp+"`.")
+                        else:
+                            whichExtension=re.sub(r"^\.*(\w+)", r".\1", whichExtension).strip();
+                            settings["apps"][whichExtension]=whichApp;
+                            save_it=True;
+                            print("• The extension `"+whichExtension+"` is now handled by `"+whichApp+"`");
+                    else:
+                        print("• Your app name must be more than whitespace.");
+                else:
+                    print("• Default app for file extension unchanged.");
+            if "q" in flags: #Reset app data
+                yn=askyn(f"• Are you sure you want to reset {PN}'s application data? (y/n) ");
+                if yn in {"y", "yes"}:
+                    settings=backup.copy();
+                    baseDir=None;
+                    save_it=True;
+                    print(f"• {PN}'s application data has been reset.");
+                else:
+                    print(f"• {PN}'s application data has not been reset.");
+            if "r" in flags: #Remove the current directory or current base directory from being a base directory.
+                if baseDir==None:
+                    print("• You are not in a base directory structure and so cannot remove it from being a base directory (because it isn't one). No base directory removed from being a base directory.");
+                else:
+                    yn=askyn("• Are you sure you want to remove the current base directory from being a base directory? FYI, if so, if it's the default directory, it will no longer be the default. (y/n) ");
+                    if yn in {"y", "yes"}:
+                        settings["baseDirs"].remove(baseDir);
+                        if settings["baseDir"]==baseDir:
+                            settings["baseDir"]=None;
+                        if settings["defaultDir"]==baseDir:
+                            settings["defaultDir"]=None;
+                            print("• The default directory is no longer set.");
+                        save_it=True;
+                        print("• The current base directory has been removed from being a base directory:\n"+baseDir);
+                        baseDir=None;
+                    else:
+                        print("• The current base directory is unchanged (still a base directory).");
+            if "s" in flags: #Toggle whether to search for the key to open from the base directory (default is True).
+                settings["searchBaseDir"]=not settings["searchBaseDir"];
+                print("• Searching for keys from the base directory set to "+str(settings["searchBaseDir"])+".");
                 save_it=True;
-                print("• Open specified extension set to "+str(settings["openSpecifiedExt"])+".");
-            if "4" in flags: #Toggle non-default extension specified as the default.
-                settings["setOpenDefault"]=not settings["setOpenDefault"];
-                save_it=True;
-                print("• The setting whether to make a specified extension the default has been set to "+str(settings["setOpenDefault"])+".");
-            if "x" in flags: #Toggle the option to execute a file instead of opening it.
-                execute_it=True;
-                print("• The file will be executed instead of opened, where applicable, this time.");
+            if "t" in flags: #Enable the default directory this time only if it is disabled.
+                if useDefault==False:
+                    useDefault=True;
+                    print("• Default directory enabled (this time only).");
+                else:
+                    print("• The default directory is already enabled.");
+            if "T" in flags: #Disable the default directory this time only if it is enabled.
+                if useDefault==True:
+                    useDefault=False;
+                    print("• Default directory disabled (this time only).");
+                else:
+                    print("• The default directory is already disabled.");
+            if "u" in flags: #Prompt to install Ki to your path
+                updateProgram();
+            if "v" in flags: #Print the version string.
+                print("\n\n"+VERSION+"\n\n");
             if "X" in flags:
                 whichExtension=None;
                 whichApp=None;
@@ -756,20 +1118,232 @@ if __name__=="__main__":
                         print("• Your app name must be more than whitespace.");
                 else:
                     print("• Default app for file extension unchanged.");
-            if "u" in flags: #Prompt to install Ki to your path
-                updateProgram();
+            if "x" in flags: #Toggle the option to execute a file instead of opening it.
+                execute_it=True;
+                print("• The file will be executed instead of opened, where applicable, this time.");
         elif pre.startswith("--")==True:
-            if pre=="--help":
+            if pre=="--about":
+                args=[]; #Clear the args so it won't do anything else.
+                print(ABOUT);
+            elif pre=="--aload" or pre.startswith("--aload "): #Loads an app scheme (which apps open which files)
+                args=args[1:];
+                whichScheme="apps";
+                if pre=="--aload":
+                    schemefp=askfile("• Please enter the filepath for your app scheme: ");
+                    if schemefp==None:
+                        sys.exit(1);
+                    else:
+                        loadScheme(schemefp);
+                else:
+                    print("• Attempting to load specified app scheme.");
+            elif pre=="--asave" or pre.startswith("--asave "):
+                args=args[1:];
+                appsString="";
+                for x in settings["apps"]:
+                    appsString+=x+"; "+settings["apps"][x]+"\n";
+                if pre=="--asave":
+                    schemefp=ask(f"• Please enter the filepath in which to save the current app scheme (or just the filename, for the current working directory): ");
+                    if schemefp==None:
+                        sys.exit(1);
+                    else:
+                        obackup=None;
+                        if os.path.isfile(schemefp)==True:
+                            obackup=ask(f"`{schemefp}` already exists. Overwrite? ");
+                        if os.path.isdir(schemefp)==True:
+                            print(f"• `{schemefp}` is a directory; app scheme not saved.");
+                        else:
+                            if obackup==None or obackup in {"y", "yes"}:
+                                with open(schemefp, "w") as FILE:
+                                    FILE.write(appsString);
+                                print("• Backup app scheme saved.");
+                else:
+                    obackup=None;
+                    if os.path.isfile(args[0])==True:
+                        obackup=ask(f"`{args[0]}` already exists. Overwrite? ");
+                    if os.path.isdir(args[0])==True:
+                        print(f"• `{args[0]}` is a directory. App scheme not saved.");
+                    else:
+                        if obackup==None or obackup in {"y", "yes"}:
+                            #subprocess.run(f"cp {settingsDictPath} {args[0]}", shell=True);
+                            with open(args[0], "w") as FILE:
+                                FILE.write(appsString);
+                            print(f"• Current app scheme saved at `{args[0]}`.");
+                        else:
+                            print("• Current app scheme not saved.");
+                    args=[];
+            elif pre=="--f": #&&&Open multiple filepaths (files with different names) instead of just one name; requires escaped spaces (no unescaped qutoes to handle spaces).
+                #multipleFiles=re.split(r"(?<!\\) ", args);
+                pass;
+            elif pre in {"--g", "--go"} or pre.startswith("--g ") or pre.startswith("--go "):
+                args=args[1:];
+                if pre in {"--g", "--go"}:
+                    if settings["lastKeyDir"]!=None:
+                        print(f"""• Opening a new shell in the last key directory: `{settings["lastKeyDir"]}`. Type `exit` to return to where you were, when you are ready.""");
+                        os.chdir(settings["lastKeyDir"]);
+                        #subprocess.run(["cd", settings["lastKeyDir"]]);
+                        subprocess.run(["bash"]);
+                        print("• Welcome back to your old shell!");
+                    else:
+                        print("• There is no last key directory, yet.");
+                else:
+                    if args[0] in settings["named_dirs"]:
+                        print(f"• Opening a new shell in `{args[0]}`: `{settings['named_dirs'][args[0]]}`. Type `exit` to return to where you were, when you are ready.");
+                        os.chdir(settings["named_dirs"][args[0]]);
+                        subprocess.run(["bash"]);
+                        print("• Welcome back to your old shell!");
+                    else:
+                        print(f"• You have not named a directory `{args[0]}`. You cannot go to it.");
+                args=[];
+            elif pre=="--help":
                 args=[]; #Clear the args so it won't do anything else.
                 print(HELP);
+            elif pre=="--license":
+                args=[];
+                print(LICENSE);
+            elif pre=="--load" or pre.startswith("--load "):
+                args=args[1:];
+                if pre=="--load":
+                    schemefp=ask(f"• Please enter the filepath for your backup of {PN}'s data (or just the filename, for the current working directory): ");
+                    if schemefp==None:
+                        sys.exit(1);
+                    else:
+                        if os.path.isfile(schemefp)==True:
+                            subprocess.run(f"cp {schemefp} {settingsDictPath}", shell=True);
+                            print("• Backup restored.");
+                        else:
+                            print(f"`{schemefp}` is not a file; backup not restored.");
+                            sys.exit(1);
+                else:
+                    if os.path.isdir(args[0])==True:
+                        print("• `{args[0]}` is a directory. Settings not restored.");
+                    else:
+                        subprocess.run(f"cp {args[0]} {settingsDictPath}", shell=True);
+                        print(f"• Restored the settings with `{args[0]}`.");
+                    args=[];
+                sys.exit(1); #This prevents the restored settings from being overwritten with the old ones later if this is the first run.
+            elif pre=="--nload" or pre.startswith("--nload "):
+                args=args[1:];
+                whichScheme="named_dirs";
+                if pre=="--nload":
+                    schemefp=askfile("• Please enter the filepath for your named directory scheme: ");
+                    if schemefp==None:
+                        sys.exit(1);
+                    else:
+                        loadScheme(schemefp, kind="named_dirs");
+                else:
+                    print("• Attempting to load specified named directory scheme.");
+            elif pre=="--nsave" or pre.startswith("--nsave "):
+                args=args[1:];
+                nschemeString="";
+                checkDefault=True;
+                for x in settings["named_dirs"]:
+                    if checkDefault==True and settings["defaultDir"]==settings["named_dirs"][x]:
+                        nschemeString+="$";
+                        checkDefault=False;
+                    elif settings["named_dirs"][x] in settings["baseDirs"]:
+                        nschemeString+="@";
+                    nschemeString+=x+"; "+settings["named_dirs"][x]+"\n";
+                if pre=="--nsave":
+                    schemefp=ask(f"• Please enter the filepath in which to save the current directory name scheme (or just the filename, for the current working directory): ");
+                    if schemefp==None:
+                        sys.exit(1);
+                    else:
+                        obackup=None;
+                        if os.path.isfile(schemefp)==True:
+                            obackup=ask(f"`{schemefp}` already exists. Overwrite? ");
+                        if os.path.isdir(schemefp)==True:
+                            print(f"• `{schemefp}` is a directory; xapp scheme not saved.");
+                        else:
+                            if obackup==None or obackup in {"y", "yes"}:
+                                with open(schemefp, "w") as FILE:
+                                    FILE.write(nschemeString);
+                                print("• Backup directory name scheme saved.");
+                else:
+                    obackup=None;
+                    if os.path.isfile(args[0])==True:
+                        obackup=ask(f"`{args[0]}` already exists. Overwrite? ");
+                    if os.path.isdir(args[0])==True:
+                        print(f"• `{args[0]}` is a directory; directory name scheme not saved.");
+                    else:
+                        if obackup==None or obackup in {"y", "yes"}:
+                            with open(args[0], "w") as FILE:
+                                FILE.write(nschemeString);
+                            print(f"• Current directory name scheme saved at `{args[0]}`.");
+                        else:
+                            print("• Current directory name scheme not saved.");
+                    args=[];
+            elif pre=="--save" or pre.startswith("--save "):
+                args=args[1:];
+                if pre=="--save":
+                    schemefp=ask(f"• Please enter the filepath for your backup of {PN}'s data (or just the filename, for the current working directory): ");
+                    if schemefp==None:
+                        sys.exit(1);
+                    else:
+                        subprocess.run(f"cp {settingsDictPath} {schemefp}", shell=True);
+                        print("• Backup saved.");
+                else:
+                    obackup=None;
+                    if os.path.isfile(args[0])==True:
+                        obackup=ask(f"`{args[0]}` already exists. Overwrite? ");
+                    if os.path.isdir(args[0])==True:
+                        print(f"• `{args[0]}` is a directory. Settings not backed up.");
+                    else:
+                        if obackup==None or obackup in {"y", "yes"}:
+                            subprocess.run(f"cp {settingsDictPath} {args[0]}", shell=True);
+                            print(f"• Backed up the settings at `{args[0]}`.");
+                        else:
+                            print("• Settings not backed up.");
+                    args=[];
+            elif pre=="--settings":
+                pass; #&&& This is to print the current settings/configuration.
             elif pre=="--version":
                 args=[]; #Clear the args so it won't do anything else.
                 print(VERSION);
-            elif pre=="--about":
-                args=[]; #Clear the args so it won't do anything else.
-                print(ABOUT);
-            elif pre=="--f": #&&&Open multiple filepaths (files with different names) instead of just one name; requires escaped spaces (no unescaped qutoes to handle spaces).
-                multipleFiles=re.split(r"(?<!\\) ", args);
+            elif pre=="--xload" or pre.startswith("--xload "): #Loads a xapp scheme (which xapps run which files)
+                args=args[1:];
+                whichScheme="xapps";
+                if pre=="--xload":
+                    schemefp=askfile("• Please enter the filepath for your xapps scheme: ");
+                    if schemefp==None:
+                        sys.exit(1);
+                    else:
+                        loadScheme(schemefp, kind="xapps");
+                else:
+                    print("• Attempting to load specified xapp scheme.");
+            elif pre=="--xsave" or pre.startswith("--xsave "):
+                args=args[1:];
+                appsString="";
+                for x in settings["xapps"]:
+                    appsString+=x+"; "+settings["xapps"][x]+"\n";
+                if pre=="--xsave":
+                    schemefp=ask(f"• Please enter the filepath in which to save the current xapp scheme (or just the filename, for the current working directory): ");
+                    if schemefp==None:
+                        sys.exit(1);
+                    else:
+                        obackup=None;
+                        if os.path.isfile(schemefp)==True:
+                            obackup=ask(f"`{schemefp}` already exists. Overwrite? ");
+                        if os.path.isdir(schemefp)==True:
+                            print(f"• `{schemefp}` is a directory; xapp scheme not saved.");
+                        else:
+                            if obackup==None or obackup in {"y", "yes"}:
+                                with open(schemefp, "w") as FILE:
+                                    FILE.write(appsString);
+                                print("• Backup xapp scheme saved.");
+                else:
+                    obackup=None;
+                    if os.path.isfile(args[0])==True:
+                        obackup=ask(f"`{args[0]}` already exists. Overwrite? ");
+                    if os.path.isdir(args[0])==True:
+                        print(f"• `{args[0]}` is a directory; xapp scheme not saved.");
+                    else:
+                        if obackup==None or obackup in {"y", "yes"}:
+                            with open(args[0], "w") as FILE:
+                                FILE.write(appsString);
+                            print(f"• Current xapp scheme saved at `{args[0]}`.");
+                        else:
+                            print("• Current xapp scheme not saved.");
+                    args=[];
         if len(args)!=0 and args[0].startswith(":")==True:
             args=" ".join(args).strip();
             args=args[1:];
@@ -779,15 +1353,16 @@ if __name__=="__main__":
                 #rdir=re.sub(r"\\* +", r"\\ ", baseDir);
                 rdir=escapePath(baseDir);
                 subprocess.run("grep -rliF --include=\\* "+args+" "+rdir+"/**/", shell=True);
-            elif settings["defaultDir"]!=None and settings["useDefault"]==True:
+            elif settings["defaultDir"]!=None and useDefault==True:
                 rfile=os.path.join(settings["defaultDir"], args);
                 #rdir=re.sub(r"\\* +", r"\\ ", settings["defaultDir"]);
                 rdir=escapePath(settings["defaultDir"]);
                 subprocess.run("grep -rliF --include=\\* "+args+" "+rdir+"/**/", shell=True);
             else:
-                subprocess.run("grep -rliF --include=\\* "+args+" ./", shell=True);    
+                subprocess.run("grep -rliF --include=\\* "+args+" ./", shell=True);
         elif len(args)!=0:
             ######
+            #print(args);
             extension=settings["extension"]; #We need to use this in case we don't save to save it.
             if "." in args[-1] and settings["openSpecifiedExt"]==True: #If an extension is specified, make it the new default extension (it goes from the final period to the end of the filename).
                 extension="."+args[-1].split(".")[-1];
@@ -815,18 +1390,18 @@ if __name__=="__main__":
 
             g=None;
             if settings["searchBaseDir"]==True and baseDir!=None:
-                if settings["useDefault"]==True and settings["defaultDir"]!=None:
+                if useDefault==True and settings["defaultDir"]!=None:
                     g=eglob(settings["defaultDir"], args, recursive=True);
                 else:
                     g=eglob(baseDir, args, recursive=True);
             else:
-                if settings["searchBaseDir"]==True and settings["useDefault"]==False:
+                if settings["searchBaseDir"]==True and useDefault==False:
                     print("• There is no base directory here; using the current working directory.");
                     g=eglob(path, args, recursive=True);
-                elif settings["searchBaseDir"]==True and settings["useDefault"]==True and settings["defaultDir"]!=None:
+                elif settings["searchBaseDir"]==True and useDefault==True and settings["defaultDir"]!=None:
                     print("• Using the default directory:\n"+settings["defaultDir"]);
                     g=eglob(settings["defaultDir"], args, recursive=True);
-                elif settings["useDefault"]==True:
+                elif useDefault==True:
                     if settings["defaultDir"]!=None:
                         g=eglob(settings["defaultDir"], args, recursive=True);
                     else:
@@ -853,10 +1428,13 @@ if __name__=="__main__":
                             #saveSettings();
                             save_it=True;
                         firstFile=False;
-                if settings["openAll"]==False:
-                    subprocess.run([getApp(), allFound[0]]);
+                if whichScheme!=None: #If we're loading a scheme, do this
+                    loadScheme(allFound[0], kind=whichScheme);
                 else:
-                    subprocess.run([getApp()]+allFound);
+                    if settings["openAll"]==False:
+                        subprocess.run([getApp(), allFound[0]]);
+                    else:
+                        subprocess.run([getApp()]+allFound); #This is what is usually run when a file is opened with the default settings.
             except IndexError:
                 ######
                 yn=None;
@@ -867,9 +1445,9 @@ if __name__=="__main__":
                     else:
                         #return settings["defaultDir"].startswith(path+os.sep);
                         return path.startswith(settings["defaultDir"]+os.sep);
-                if settings["useDefault"]==True and (chunk() or settings["defaultDir"]==path):
+                if useDefault==True and (chunk() or settings["defaultDir"]==path):
                     yn=ask("• "+args+" does not exist.\n• Do you wish to create and open it (n = no; blank = no; y = current working directory; b = base directory; k = directory of the last key opened?) ", desired={"n", "no", "", "y", "yes", "b", "k"});
-                elif settings["useDefault"]==True and settings["defaultDir"]!=None:
+                elif useDefault==True and settings["defaultDir"]!=None:
                     yn=ask("• "+args+" does not exist.\n• Do you wish to create and open it (n = no; blank = no; b = base directory; k = directory of the last key opened?) ", desired={"no", "", "n", "b", "k"});
                     if yn in {"y", "yes"}:
                         yn="n";
@@ -896,7 +1474,7 @@ if __name__=="__main__":
                     else:
                         print("• You don't have permission to create `"+args+"` in `"+path+"`.");
                 elif yn=="b":
-                    if settings["useDefault"]==True and settings["defaultDir"]!=None:
+                    if useDefault==True and settings["defaultDir"]!=None:
 
                         file=os.path.join(settings["defaultDir"], os.path.basename(args));
                         if settings["lastKeyDir"]!=settings["defaultDir"]:
@@ -910,7 +1488,7 @@ if __name__=="__main__":
                         else:
                             print("• You do not have permission to create `"+file+"`.");
                     else:
-                        if settings["useDefault"]==True and settings["defaultDir"]==None:
+                        if useDefault==True and settings["defaultDir"]==None:
                             print("• No default directory has been set. Acting as if the default directory is disabled.");
                         if baseDir==None:
                             print("• You are not within a base directory structure.");
@@ -945,10 +1523,10 @@ if __name__=="__main__":
                             else:
                                 print("• You do not have permission to create `"+file+"`.");
                 elif yn=="k":
-                    if settings["useDefault"]==True and settings["defaultDir"]!=None and settings["lastKeyDir"].startswith(settings["defaultDir"]+os.sep)==False:
+                    if useDefault==True and settings["defaultDir"]!=None and settings["lastKeyDir"].startswith(settings["defaultDir"]+os.sep)==False:
                         print("• The last key directory is not within the default directory structure. No file created.");
                     else:
-                        if settings["useDefault"]==True and settings["defaultDir"]==None:
+                        if useDefault==True and settings["defaultDir"]==None:
                             print("• The default directory is not set. Acting as if the default directory is disabled.");
                         file=os.path.join(settings["lastKeyDir"], os.path.basename(args));
                         if perm(file)==True:
