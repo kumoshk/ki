@@ -8,7 +8,7 @@ import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfil
 
 PN="Ki"; #Program name, used in the documentation.
 FN="ki"; #File name, used in the documentation and other areas.
-VER="0.10.0"; #The current program version.
+VER="0.11.0"; #The current program version.
 
 VERSION=f"""
 Version {VER}
@@ -56,6 +56,7 @@ About the programmer:
 Religiously, I'm a member of The Church of Jesus Christ of Latter-day Saints (see <churchofjesuschrist.org> and <comeuntochrist.org>). I have a testimony of it. I know God answers prayers (through my experience and others'). I know God loves us. I have a testimony through the Holy Ghost that Joseph Smith saw God the Father and Jesus Christ.
 
 Politically, I'm independent (as in, I belong to no political party).
+
 I have a lot of interests.
 
 Contact/download:
@@ -79,24 +80,22 @@ Note that you must only provide one file name per use of {PN} (and you do not ne
 
 If a file does not exist, {PN} will prompt you to create it (and ask where to do so, giving you some convenient options).
 
-{PN} saves your decisions for future uses of the program. {PN} is not currently designed to be used from a script. It is designed for use by humans.
-
 The name {PN} (formerly key, but that was taken by Donkey) is inspired by dictionary key value pairs (or entries in an index, such as a glossary, or an actual lexicon). Because entries in such tend to have unique names, opening only one file by that name is the default.
 
 {PN} begins each feedback entry (except for such as this help page) with a bullet, in order to make them more readable.
 
-Combinable options:
-[Note: You must include a hyphen before the flags, or else before each flag.]
-• -0: &&& (not implemented, yet) Toggle whether to handle files such as `myFile.{FN}.asc` specially (when `.{FN}` is the default and you type `{PN} myFile`): decrypt them (symmetrically with a passphrase), then open them with the desired app for myExtension, then after the app closes, check to see if the file was saved; if it was saved, prompt to re-encrypt and overwrite the original. In short, this lets you open, edit, and save password-protected files. The default is false.
-• -1: &&& (not implemented, yet) Passphrase-protect (symmetrically encrypt) the key instead of opening it.
+Combinable options/flags:
+[Note: You must include a hyphen before the flags/options, or else before each flag/option. If you omit the hyphens, the would-be flags/options will be treated as part of the key name.]
+• -0: Toggle whether to handle files such as `myFile.{FN}.asc` specially (when `.{FN}` is the default and you type `{PN} myFile`): decrypt them (symmetrically with a passphrase), then open them with the desired app for myExtension, then after the app closes, check to see if the file was saved; if it was saved, prompt to re-encrypt and overwrite the original. In short, this lets you open, edit, and save password-protected files. The default is false.
+• -1: Passphrase-protect (symmetrically encrypt) the key instead of opening it (and optionally keep the unencrypted file, too). If -0 has been toggled True, then `{FN} myFile` will decrypt and open `myFile.ki.asc` if you've deleted the original `myFile.ki`.
 • -2: Toggle whether to open the specified extension instead of the default (this won't work for no extension). Note that if this is set, for instance, typing `{FN} test.{FN}` will open `test.{FN}` instead of `test.{FN}.{FN}` even when the default extension is `.{FN}`, but if you type `test.txt` it will open `test.txt` instead of `test.txt.{FN}` (again, when the default extension is `.{FN}`). The default setting is true.
 • -4: Toggle whether when specified extensions are opened (see -2) they become the new default or not. The default setting is false.
 • -8: Make the current working directory a base directory (you can have more than one).
 • -9: Set the default directory: If no base directory is set, make the current working directory the default directory. If there is at least one base directory, make the current or last-accessed base directory the default directory (in that priority order). You may only have one default directory at a time.
-• -A: If used, the first word you enter after the flags will be the new default app {PN} uses to open files, or to run files if the -x flag is also provided (if you follow it with a file, it will open it in the regular fasion; e.g. `{FN} -A cat test` will open `test.{FN}`, and any subsequent keys opened, with `cat`; assuming python weren't already the default, `{FN} -Ax python test.py` will run test.py with python and set python as the default app for running files with -x).
+• -A: If used, the first word you enter after the flags/options will be the new default app {PN} uses to open files, or to run files if the -x flag is also provided (if you follow it with a file, it will open it in the regular fasion; e.g. `{FN} -A cat test` will open `test.{FN}`, and any subsequent keys opened, with `cat`; assuming python weren't already the default, `{FN} -Ax python test.py` will run test.py with python and set python as the default app for running files with -x).
 • -a: Like -A, except it doesn't change the default app, nor does it affect -x. It just opens with the specified app this one time.
-• -B: Set the current working directory: Set the current working directory to be either the default directory or a base directory; or, give the current working directory's path a name to reference it when you use -b. You will be prompted which to do. See also --go.
-• -b: Specify a named directory structure to search for a key (or keys) to open. (You name them with -B.) Example: If `books` is the name you've given `~/Documents/e-books` then `{FN} -b books Anne of Green Gables` will search `/Documents/e-books` for a key called Anne of Green Gables.ki as if `books` were the default directory (but it's not). This is not compatible with some other flags.
+• -B: Set the current working directory to be either the default directory or a base directory; or, give the current working directory's path a name to reference it when you use -b. You will be prompted which to do. See also --go.
+• -b: Specify a named directory structure to search for a key (or keys) to open. (You name them with -B.) Example: If `books` is the name you've given `~/Documents/e-books` then `{FN} -b books Anne of Green Gables` will search `/Documents/e-books` for a key called Anne of Green Gables.ki as if `books` were the default directory (but it's not). This is not compatible with some other flags/options. However, this is evaluated after -a, so you can combine the two like this: `{FN} -ab appName dirName keyName`.
 • -c: Clear the list of base directories, or remove the current base directory from being a base directory (you will be prompted which to do).
 • -D: Toggle whether to use the default directory (default is false). This overrides everything else (and uses it as your current base directory no matter where you are). See also -9, -B, -d, -T, and -t.
 • -d: Toggle whether to use the default directory without saving the setting change (so it's changed for this execution only). See also -9, -B, -D, -T, and -t.
@@ -107,7 +106,8 @@ Combinable options:
 • -P: Prompts you to undo a specific customization previously made with -p or -X.
 • -p: Prompts you for a specific file extension to open with a specific app, every time; you can also set the default extension here.
 • -q: reset the app settings. You will lose any configurations that you have made.
-• -r: Remove the current directory (or the current base directory) from being a base directory.
+• -R: Remove the current directory (or the current base directory) from being a base directory.
+• -r: Disable the default extension this run only: e.g. `{FN} -r myFile` will just open `myFile` (not `myFile.ki`).
 • -s: Toggle whether to search for the key (file) to open from the base directory (if you are inside a base directory structure). The default is true; so, if you don't want to open keys starting from the base directory that aren't in/under the current directory you're in within that base directory, then you should set this to false.
 • -T: Disable the default directory this time only (no change if it is already disabled). See also -9, -B, -D, -d, and -t.
 • -t: Enable the default directory this time only (no change if it is already enabled). See also -9, -B, -D, -d, and -T.
@@ -116,7 +116,7 @@ Combinable options:
 • -X: This is like -p, except it's for the apps that are used when -x is provided. It's basically a second set of the same thing.
 • -x: This executes the file instead of opening it. For instance, instead of opening a .py file with nano, it may run it with python. This must be set each time you wish to use it (it doesn't toggle a saved variable).
 
-Non-combinable options:
+Non-combinable options/flags:
 • --about: About {PN}, contact, etc.
 • --aload: Load an app scheme (which apps open which extensions); separate file extensions and apps by semi-colons or new lines (list the file extension first, followed by the new default app to open it, followed by another file extension, followed by the app to open it, and so on; note that all semi-colons in the file are converted to new lines and all whitespace is stripped, so feel free to indent, add double new lines, or whatever; the first line should be a file extension, the second an app, and so on; it doesn't matter what the scheme is called, nor what it's file extension is; {PN} searches for the scheme file the same as any key, although it will only load one file even if {PN} is set to open all that it finds); e.g. `{FN} --aload myScheme.sch`, with `myScheme.sch` having such as these contents:
 .txt;emacs
@@ -127,7 +127,7 @@ Non-combinable options:
 • --g or --go: Go to the last key directory. (FYI, this opens a new shell.) You can also open named directory structures with this: e.g. `{FN} --go books` will take you to `~/Documents/ebooks`, if you've named that path `books`.
 • --help: Print the help (without the option of doing other stuff at the same time).
 • --license: Print the license granted for use of {PN}.
-• --load: This will load {PN}'s application data from a backup file saved with `{FN} --save`. Arguments after the flag constitute the filename of the backed-up settings. If no arguments are supplied, you will be asked for a filepath.
+• --load: This will load {PN}'s application data from a backup file saved with `{FN} --save`. Arguments after the option constitute the filename of the backed-up settings. If no arguments are supplied, you will be asked for a filepath.
 • --nload: Like `--aload`, but it loads a scheme of named directory structures for use with `{FN} -b`. Preface names with `@` to make their associated paths base directories. The first name prefaced with `$` will be made the default directory (and a base directory). Example:
 $book;~/ebooks
 docs;~/Documents
@@ -142,20 +142,27 @@ bin;~/bin
 • --xsave: Save your current scheme of apps for executing files with -x.
 
 Special options:
-• Begin search query with a colon (it won't open a key): Find all the files in the directory structure (or base or default directory structure), regardless of file extension (e.g. `{FN} :my search text` is the same as `grep -rliF --include=\* my\ search\ text /base/directory/**/`, or if it's the current working directory, it's like `grep -rliF --include=\* my\ search\ text ./`).
+• Begin search query with a colon (it won't open a key): Find all the files in the directory structure (or base or default directory structure), regardless of file extension (e.g. `{FN} :my search text` is the same as `grep -rliF --include=\* my\ search\ text /base/directory/**/`, or if it's the current working directory, it's like `grep -rliF --include=\* my\ search\ text ./`). Note that you can even do such as `{FN} -b myDir :mySearchCriteria`.
 
 Warnings:
-• See the license: i.e. `{PN} --license`
+• See the license: i.e. `{PN} --license`.
+• {PN} saves your decisions for future uses of the program. {PN} is designed to be used directly by humans at least as much as it is otherwise (some flags/options prompt for user input and some toggle saved variables; so, you most likely won't be using those in a script). {PN} was made to make things easier for humans (only some flags/options are suitable for scripts, and even then you should be careful, since saved variables that you decide to change might influence what things do).
 • Should the program crash, note that it is possible that some data was not saved during that execution of {PN} (since the print statements occur before the saving in many instances, in order to make the code more efficient).
-• Not all combinable flags were intended to be used together. Some flag combinations may result in undesirable effects. Bugs could potentially exist with some combinations.
-• Flags are evaluated before the key (the file).
-• Flags are not evaluated in any particular order.
+• Not all combinable flags/options were intended to be used together. Some flag/option combinations may result in undesirable effects. Bugs could potentially exist with some combinations.
+• Flags/options are evaluated before the key (the file).
+• Flags/options should be evaluated in the order that they are listed in the help, but because internally some flags and/or options only trigger future events (like they might change a variable that causes the desired thing to happen further down in the code), this might not seem to be the case for some flags/options.
 • Flags/options may change between versions of {PN}. Always check the help after doing an update.
 • When doing an update, some things may or may not become incompatible that were associated with previous versions of {PN} (such as your saved backups of {PN}'s settings).
+• Encryption passphrases are temporarily saved to disk in a file before being piped into gpg with cat on the command-line. If I could use gpg's natural password-asking system, I would, but I don't know of a way to do that seemlessly in the desired fashion with symmetric encryption (yet). If it helps, I've at least made the filenames random and extremely difficult to read (I've done the same with the decrypted files themselves). I use the compiled gpg command-line app instead of a Python library is to avoid having to give {PN} the GNU GPL license. I like the GPL, but reading about how to apply it to my work gives me a headache, and I think it was primarily intended for such as C and C++ source code (not pure Python).
+• When you encrypt and unencrypt things, it resets the agent so your passphrases won't be remembered. This could be make gpg forget passwords you want it to remember if you're working with {PN} separately in the same computer session.
 
 Tips:
-• Use `tree myDirectory` or `ls -R myDirectory` to show the contents of a directory structure recursively.
+• Set the default extension to blank (with `{FN} -e`) if you want to have to specify the extension manually every time (e.g. `{FN} myFile` will open a file called `myFile` and `{FN} myFile.ki` will open a file called `myFile.ki`).
 • If you need to find the application data, it's at `~/.{FN}_kumoshk`.
+• If you're in nano, and want to insert text from a file in a far away place, you can do such as this (assuming you've previously named a directory path `pathName` with `{FN} -B` or `{FN} --nload myScheme`: ctrl+t (in nano) then `{FN} -ab cat pathName myFile`; note that `pathName` should not be confused with an actual path; it's just an abstract name that you invented earlier yourself that represents the path.
+
+Unaffiliated command-line stuff to accompany {PN}:
+• Use `tree myDirectory` or `ls -R myDirectory` to show the contents of a directory structure recursively.
 """.strip();
 
 NANORC="""set tabsize 4
@@ -167,6 +174,7 @@ set atblanks
 set afterends
 set zap
 set nonewlines
+#set multibuffer
 set speller "hunspell -x -c"
 set rawsequences
 bind ^H chopwordleft main
@@ -177,43 +185,7 @@ bind ^H chopwordleft main
 path=os.getcwd();
 execute_it=False; #If changed to True, "xapp" and "xapps" will be used in place of "app" and "apps".
 settings={}; #One dictionary for all the settings.
-settings["extension"]=f".{FN}"; #Unimplemented
-extension=None; #This is to make it global down below, so the getApp() method can use it.
-settings["scriptExtension"]=".ks"; #Unimplemented; Files with this extension, rather than just being opened, can perform various actions (such as specify a list of files to open, open random files, according to a set of likelihoods, etc.).
-settings["firstRun"]=True;
-settings["gpg_path"]="gpg";
-settings["kicrypt"]=False; #Toggle how to handle such as myfile.ki.asc when .ki is the default and you type ki myfile
-settings["app"]="nano"; #This is the default app for opening files; 'apps' below overrides this, however.
-settings["named_dirs"]={}; #These are your saved directories for you to access by a chosen abstract name, rather than by typing in the path for it.
-settings["xapp"]="cat"; #This is the default app to execute files with when they're not already set to be executable.
-settings["apps"]={}; #Default apps to open the various file extensions. Keys are file extensions and values are the apps to open them.
-settings["xapps"]={}; #xapps is to xapp as apps is to app
-settings["xapps"][".py"]="python3";
-settings["xapps"][".lua"]="lua5.4";
-settings["xapps"][".rb"]="ruby";
-settings["xapps"][".pl"]="perl";
-settings["xapps"][".vala"]="valac";
-settings["xapps"][".gs"]="valac"; #Compiling Genie code
-settings["xapps"][".ly"]="lilypond";
-settings["xapps"][".java"]="javac";
-soundApps="8svx aif aifc aiff aiffc al amb au avr caf cdda cdr cvs cvsd cvu dat dvms f32 f4 f64 f8 fap flac fssd gsm gsrt hcom htk ima ircam la lpc lpc10 lu mat mat4 mat5 maud mp2 mp3 nist ogg opus paf prc pvf raw s1 s16 s2 s24 s3 s32 s4 s8 sb sd2 sds sf sl sln smp snd sndfile sndr sndt sou sox sph sw txw u1 u16 u2 u24 u3 u32 u4 u8 ub ul uw vms voc vorbis vox w64 wav wavpcm wve xa xi m3u pls".split(" ");
-for x in soundApps:
-    settings["xapps"]["."+x]="play";
-settings["lastKeyDir"]=None; #Directory of the last key opened.
-settings["defaultDir"]=None; #This is a saved directory for frequent use, which can be changed. You can use it even when you're not in it.
-settings["useDefault"]=False; #If this is true then when you're not in a base directory, it will act as if you are in the default directory structure no matter where you are.
-settings["baseDirs"]=set(); #This is a set of directories. If you're within these when you use Ki, it will always search from it even when in its subdirectories. You can't set both a directory and one of its subdirectories to be in baseDirs.
-settings["baseDir"]=None; #This is the current base directory (of if there is no current one, it is the last base directory used).
-settings["searchBaseDir"]=True; #Whether or not to search for keys from the base dir when in its subdirectories (and so on recursively).
-settings["openAll"]=False; #Whether or not to open all files found or just one.
-settings["setOpenDefault"]=False; #Whether opening a file with a specific extension sets that extension to be the default.
-settings["openSpecifiedExt"]=True; #Whether you can open extensions that aren't the default just by typing them in (this won't work for blank extensions).
-backup=settings.copy();
-save_it=False; #If set to True, settings will be saved (pickled). Calling saveSettings() sets it back to False.
-oneTimeApp=None;
-kicrypt=False; #Set to True if we're dealing with an encrypted file.
 
-######
 
 #Make sure the user settings folder exists.
 settingsPath=None;
@@ -221,16 +193,62 @@ settingsPath=os.path.join(os.path.expanduser("~"), f".{FN}_kumoshk");
 if not os.path.isdir(settingsPath):
     os.makedirs(settingsPath);
 
+extension=None; #This is to make it global down below, so the getApp() method can use it.
+
+backupDictPath=os.path.join(settingsPath, "backup_dict.pkl");
+
+def bu(): #Return backup file dictionary
+    global backupDictPath;
+    with open(backupDictPath, "rb") as FILE:
+        result=pickle.load(FILE);
+    return result;
+
 #Load the settings, if they've been saved.
 settingsDictPath=os.path.join(settingsPath, "settings_dict.pkl");
-if os.path.exists(settingsDictPath):
+if os.path.exists(settingsDictPath) and os.path.exists(backupDictPath):
     with open(settingsDictPath, "rb") as FILE:
         settings=pickle.load(FILE);
-    for x in backup:
-        if x not in settings:
-            print(f"`{x}` missing from settings; adding it.");
-            settings[x]=backup[x]; #This is to prevent crashes in old versions of the program when I add new settings.
-            save_it=True;
+else:
+    settings["extension"]=f".{FN}"; #Unimplemented
+    settings["scriptExtension"]=".ks"; #Unimplemented; Files with this extension, rather than just being opened, can perform various actions (such as specify a list of files to open, open random files, according to a set of likelihoods, etc.).
+    settings["firstRun"]=True;
+    settings["gpg_path"]="gpg";
+    settings["kicrypt"]=False; #Toggle how to handle such as myfile.ki.asc when .ki is the default and you type ki myfile
+    settings["app"]="nano"; #This is the default app for opening files; 'apps' below overrides this, however.
+    settings["named_dirs"]={}; #These are your saved directories for you to access by a chosen abstract name, rather than by typing in the path for it.
+    settings["xapp"]="cat"; #This is the default app to execute files with when they're not already set to be executable.
+    settings["apps"]={}; #Default apps to open the various file extensions. Keys are file extensions and values are the apps to open them.
+    settings["xapps"]={}; #xapps is to xapp as apps is to app
+    settings["xapps"][".py"]="python3";
+    settings["xapps"][".lua"]="lua5.4";
+    settings["xapps"][".rb"]="ruby";
+    settings["xapps"][".pl"]="perl";
+    settings["xapps"][".vala"]="valac";
+    settings["xapps"][".gs"]="valac"; #Compiling Genie code
+    settings["xapps"][".ly"]="lilypond";
+    settings["xapps"][".java"]="javac";
+    soundApps="8svx aif aifc aiff aiffc al amb au avr caf cdda cdr cvs cvsd cvu dat dvms f32 f4 f64 f8 fap flac fssd gsm gsrt hcom htk ima ircam la lpc lpc10 lu mat mat4 mat5 maud mp2 mp3 nist ogg opus paf prc pvf raw s1 s16 s2 s24 s3 s32 s4 s8 sb sd2 sds sf sl sln smp snd sndfile sndr sndt sou sox sph sw txw u1 u16 u2 u24 u3 u32 u4 u8 ub ul uw vms voc vorbis vox w64 wav wavpcm wve xa xi m3u pls".split(" ");
+    for x in soundApps:
+        settings["xapps"]["."+x]="play";
+    settings["lastKeyDir"]=None; #Directory of the last key opened.
+    settings["defaultDir"]=None; #This is a saved directory for frequent use, which can be changed. You can use it even when you're not in it.
+    settings["useDefault"]=False; #If this is true then when you're not in a base directory, it will act as if you are in the default directory structure no matter where you are.
+    settings["baseDirs"]=set(); #This is a set of directories. If you're within these when you use Ki, it will always search from it even when in its subdirectories. You can't set both a directory and one of its subdirectories to be in baseDirs.
+    settings["baseDir"]=None; #This is the current base directory (of if there is no current one, it is the last base directory used).
+    settings["searchBaseDir"]=True; #Whether or not to search for keys from the base dir when in its subdirectories (and so on recursively).
+    settings["openAll"]=False; #Whether or not to open all files found or just one.
+    settings["setOpenDefault"]=False; #Whether opening a file with a specific extension sets that extension to be the default.
+    settings["openSpecifiedExt"]=True; #Whether you can open extensions that aren't the default just by typing them in (this won't work for blank extensions).
+    with open(backupDictPath, "wb") as FILE:
+        pickle.dump(settings, FILE, protocol=5);
+
+save_it=False; #If set to True, settings will be saved (pickled). Calling saveSettings() sets it back to False.
+oneTimeApp=None;
+ddd=False; #Disable the default extension this run.
+passphraseProtect=False; #Passphrase-protect the key instead of opening it.
+
+######
+
 
 useDefault=settings["useDefault"]; #This is so we can do one-time uses of the default-directory, and of not using the default directory.
 
@@ -240,6 +258,9 @@ def saveSettings():
     save_it=False; #To make sure we don't do redundant saves.
     with open(settingsDictPath, "wb") as FILE:
         pickle.dump(settings, FILE, protocol=5);
+    if settings["firstRun"]==True:
+        with open(backupDictPath, "wb") as FILE:
+            pickle.dump(settings, FILE, protocol=5);
 
 baseDir=None;
 for x in settings["baseDirs"]:
@@ -426,6 +447,11 @@ def unescapePath(p):
 def eglob(p1, p2, recursive=False): #escaping variant of glob
     escapedPath=glob.escape(p1)+"/**/"+glob.escape(p2).replace("[*]", "*"); #&&&Research any others you might not want to be escaped (the asterisk allows you to do wildcard searches for files: e.g. ki myPartial*
     to_return=glob.glob(escapedPath, recursive=recursive);
+    if settings["kicrypt"]==True:
+        if p2.endswith(".asc")==False:
+            #Treat such as .ki.asc files as if they were such as .ki files.
+            ascReturn=glob.glob(escapedPath+".asc", recursive=recursive);
+            to_return.extend(ascReturn);
     if settings["openAll"]==False:
         i=0;
         while i<len(to_return):
@@ -788,13 +814,13 @@ def gpg_encrypt(filepath, passphrase=None, output=None, alg="AES256", hash="SHA5
         compress_level="--bzip2-compress-level "+compress_lvl;
     result=None;
     if passphrase==None:
-        passphrase=getpass.getpass("Please enter your passphrase: ");
-        repassphrase=getpass.getpass("Please re-enter your passphrase: ");
+        passphrase=getpass.getpass("• Please enter your passphrase: ");
+        repassphrase=getpass.getpass("• Please re-enter your passphrase: ");
         if passphrase!=repassphrase:
-            print("Your passphrases do not match. File not encrypted.");
+            print("• Your passphrases do not match. File not encrypted.");
             return None;
         elif passphrase==None:
-            print("File not encrypted.");
+            print("• File not encrypted.");
             return None;
     tmp_filename=temp_uname();
     with tempfile.TemporaryDirectory() as DIR:
@@ -805,16 +831,38 @@ def gpg_encrypt(filepath, passphrase=None, output=None, alg="AES256", hash="SHA5
             result=subprocess.Popen("cat "+tmpfilepath+"|"+settings["gpg_path"]+" --batch --yes --passphrase-fd 0 --force-mdc --s2k-mode 3 --s2k-count "+iterations+" --s2k-cipher-algo "+alg+" --s2k-digest-algo "+hash+" --compress-algo='"+compress_alg+"' "+compress_level+" --output="+shlex.quote(output)+" -"+armor+"c "+shlex.quote(filepath), stdin=subprocess.PIPE, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, shell=True).communicate()[0];
         else:
             result=subprocess.Popen("cat "+tmpfilepath+"|"+settings["gpg_path"]+" --batch --yes --passphrase-fd 0 --force-mdc --s2k-mode 3 --s2k-count "+iterations+" --s2k-cipher-algo "+alg+" --s2k-digest-algo "+hash+" --compress-algo='"+compress_alg+"' --compress-level "+compress_lvl+" -"+armor+"c "+shlex.quote(filepath), stdin=subprocess.PIPE, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, shell=True).communicate()[0];
+    if result.strip()==b"":
+        print("• File encrypted.");
     return result.strip();
+def encrypt_file(filepath, app):
+    if os.path.basename(filepath).endswith(".asc")==False:
+        encrypt=False;
+        passphrase=ask("• Please enter a new passphrase: ", pw=True);
+        repassphrase=ask("• Please re-enter it: ", pw=True);
+        if passphrase==None:
+            print(f"• No changes made to `{filepath}`.");
+        elif passphrase==repassphrase:
+            encrypt=True;
+        else:
+            print(f"• The passphrase doesn't match. No changes made to `{filepath}`.");
+        if encrypt==True:
+            subprocess.run("echo RELOADAGENT|gpg-connect-agent", shell=True);
+            gpg_encrypt(filepath=filepath, passphrase=passphrase, output=filepath+".asc");
+            subprocess.run("echo RELOADAGENT|gpg-connect-agent", shell=True);
+        else:
+            print("• File not encrypted.");
+    else:
+        print("• According to the file extension, it is already encrypted.");
 def crypt(filepath, app):
     #Decrypt an .x.asc file (where x is any file extension), open the decrypted file, after it closes, check to see if the file has changed, and if it has, encrypt it and write over the old encrypted file.
     global settings;
     subprocess.run("echo RELOADAGENT|gpg-connect-agent", shell=True);
     decryptedfp=temp_uname(); #Filepath for the decrypted file.
+    reEncrypted=None;
     result=None;
     with tempfile.TemporaryDirectory() as DIR:
         decryptedfp=os.path.join(DIR, decryptedfp);
-        passphrase=getpass.getpass("Please enter the passphrase: ");
+        passphrase=getpass.getpass("• Please enter the passphrase: ");
         if passphrase!=None:
             tmp_filename=temp_uname();
             with tempfile.TemporaryDirectory() as DIR2:
@@ -824,7 +872,7 @@ def crypt(filepath, app):
                 result=subprocess.Popen("cat "+shlex.quote(tmpfilepath)+"|"+settings["gpg_path"]+" -d --batch --yes --passphrase-fd 0 --output="+shlex.quote(decryptedfp)+" "+shlex.quote(filepath), stdin=subprocess.PIPE, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0];
         result=not "decryption failed:" in str(result), str(result); #If it worked, return True and the result. If not, return False and the result.
         if result[0]==True:
-            print(f"`{filepath}` decrypted and saved to `{decryptedfp}`.");
+            print(f"• `{filepath}` decrypted and saved to `{decryptedfp}`.");
             #Hash the decrypted file.
             theHash=hash(decryptedfp);
             #Open with app
@@ -833,28 +881,28 @@ def crypt(filepath, app):
             newHash=hash(decryptedfp);
             #Check the hashes to see if changes were saved.
             if theHash!=newHash:
-                reEncrypt=input(f"Would you like to re-encrypt and overwrite `{filepath}`? (y=yes, same passphrase, n=no, r=yes, new passphrase) ");
+                reEncrypt=input(f"• Would you like to re-encrypt and overwrite `{filepath}`? (y=yes, same passphrase, n=no, r=yes, new passphrase) ");
                 if reEncrypt=="r":
-                    passphrase=getpass.getpass("Please enter a new passphrase: ");
-                    repassphrase=getpass.getpass("Please re-enter it: ");
+                    passphrase=ask("• Please enter a new passphrase: ", pw=True);
+                    repassphrase=ask("• Please re-enter it: ", pw=True);
                     if passphrase==None:
-                        print(f"No changes made to `{filepath}`.");
+                        print(f"• No changes made to `{filepath}`.");
                     elif passphrase==repassphrase:
                         reEncrypt="y";
                     else:
-                        print(f"The passphrase doesn't match. No changes made to `{filepath}`.");
+                        print(f"• The passphrase doesn't match. No changes made to `{filepath}`.");
                 if reEncrypt=="y":
                     #Ask whether to re-encrypt and overwrite.
-                    print(f"Encrypting saved changes to `{encryptedfp}` and overwriting `{filepath}` with the new encrypted file.");
+                    print(f"• Encrypting saved changes to `{decryptedfp}` and overwriting `{filepath}` with the new encrypted file.");
                     #Re-encrypt
-                    reEncrypted=gpg_encrypt(filpath=decryptedfp, passphrase=passphrase, output=filepath);
+                    reEncrypted=gpg_encrypt(filepath=decryptedfp, passphrase=passphrase, output=filepath);
                 else:
-                    print(f"No changes made to `{filepath}`.");
+                    print(f"• No changes made to `{filepath}`.");
             else:
-                print(f"No changes made to `{filepath}`.");
+                print(f"• No changes made to `{filepath}`.");
         else:
-            print(f"`{filepath}` not decrypted.");
-            print("result", result);
+            print(f"• `{filepath}` not decrypted.");
+            #print("result", result);
         subprocess.run("echo RELOADAGENT|gpg-connect-agent", shell=True);
         return result, reEncrypted; #decryptionResult, re-encryptionResult
 
@@ -870,17 +918,18 @@ if __name__=="__main__":
             args=flagSplit[1:];
             flags=flagSplit[0];
             if flags.replace("-","") in {"aload", "nload", "xload", "help", "about", "version", "go", "license", "asave", "nsave", "xsave", "load", "save", "settings"}:
-                print("• Your chosen flags are arranged like a non-cominable option name. For safety reasons, in case this was an accident, the program will exit here without doing anything else. Use two hyphens for the non-combinable option.");
+                print("• Your chosen flags/options are arranged like a non-cominable option name. For safety reasons, in case this was an accident, the program will exit here without doing anything else. Use two hyphens for the non-combinable option.");
                 sys.exit(1);
-            if "0" in flags:
+            if "0" in flags: #Toggle whether to open/decrypt passphrase-protected files and offer to encrypt any saved changes to the temporary file and overwrite the original.
                 settings["kicrypt"]=not settings["kicrypt"];
                 save_it=True;
                 if settings["kicrypt"]==True:
                     print(f"• `.{FN}.asc` files are now handled specially (for encryption/decryption).");
                 else:
                     print(f"• `.{FN}.asc` files are now handled as any other file.");
-            if "1" in flags:
-                print("• TBA");
+            if "1" in flags: #Passphrase-protect the key instead of opening it.
+                passphraseProtect=True;
+                print("• Attempting to passphrase-protect the key.");
             if "2" in flags: #Toggle whether to open the specified extension if one is specified (instead of the default), and whether to set that specified extension as the default.
                 settings["openSpecifiedExt"]=not settings["openSpecifiedExt"];
                 save_it=True;
@@ -910,7 +959,7 @@ if __name__=="__main__":
                 #addCurrentBaseDir();
                 setDir();
             if "b" in flags: #Search from a specified directory (by the abstract name you've given it).
-                incflags=set("aBdDt89");
+                incflags=set("BdDt89");
                 badCombo=False;
                 badList="";
                 for x in incflags:
@@ -918,7 +967,7 @@ if __name__=="__main__":
                         badCombo=True;
                         badList+=x;
                 if badCombo==True:
-                    print(f"• The flag(s) `-{badList}` are not combinable with -b; therefore, -b is not being done. Not opening/creating a key.");
+                    print(f"• The flag(s)/option(s) `-{badList}` are not combinable with -b; therefore, -b is not being done. Not opening/creating a key.");
                     args=[];
                 else:
                     abname=args[0];
@@ -1011,14 +1060,14 @@ if __name__=="__main__":
                     removeEH=input("• Please enter the extension you wish to reset (press * to reset the default extension): ");
                     if removeEH!=None:
                         if removeEH=="*":
-                            settings[whichapps[0]]=backup[whichapps[0]];
+                            settings[whichapps[0]]=bu()[whichapps[0]];
                             save_it=True;
                             print("• The default app has been reset to `"+settings[whichapps[0]]+"`.");
                         else:
                             removeEH=re.sub(r"^\.*(\w+)", r".\1", removeEH).strip();
                             if removeEH in settings[whichapps[1]]:
                                 try:
-                                    settings[whichapps[1]][removeEH]=backup[whichapps[1]][removeEH];
+                                    settings[whichapps[1]][removeEH]=bu()[whichapps[1]][removeEH];
                                     print("• Extension `"+removeEH+"` reset to `"+settings[whichapps[1]][removeEH]+"`.");
                                 except KeyError:
                                     del settings[whichapps[1]][removeEH];
@@ -1051,15 +1100,19 @@ if __name__=="__main__":
                 else:
                     print("• Default app for file extension unchanged.");
             if "q" in flags: #Reset app data
-                yn=askyn(f"• Are you sure you want to reset {PN}'s application data? (y/n) ");
+                yn=askyn(f"• Are you sure you want to reset {PN}'s application data (if you have unevaluated flags/options, {PN} will quit before evaluating them)? (y/n) ");
                 if yn in {"y", "yes"}:
-                    settings=backup.copy();
+                    #settings=backup.copy();
+                    #os.remove(settingsDictPath);
+                    #os.remove(backupDictPath);
+                    shutil.rmtree(settingsPath)
                     baseDir=None;
-                    save_it=True;
+                    #save_it=True;
                     print(f"• {PN}'s application data has been reset.");
+                    sys.exit(1);
                 else:
                     print(f"• {PN}'s application data has not been reset.");
-            if "r" in flags: #Remove the current directory or current base directory from being a base directory.
+            if "R" in flags: #Remove the current directory or current base directory from being a base directory.
                 if baseDir==None:
                     print("• You are not in a base directory structure and so cannot remove it from being a base directory (because it isn't one). No base directory removed from being a base directory.");
                 else:
@@ -1076,6 +1129,9 @@ if __name__=="__main__":
                         baseDir=None;
                     else:
                         print("• The current base directory is unchanged (still a base directory).");
+            if "r" in flags: #Disable the default file extension for this run only.
+                ddd=True;
+                print("• Ignoring the default extension this run.");
             if "s" in flags: #Toggle whether to search for the key to open from the base directory (default is True).
                 settings["searchBaseDir"]=not settings["searchBaseDir"];
                 print("• Searching for keys from the base directory set to "+str(settings["searchBaseDir"])+".");
@@ -1371,6 +1427,8 @@ if __name__=="__main__":
                     print("• Default extension changed to `"+settings["extension"]+"`.");
                     #saveSettings();
                     save_it=True;
+            if ddd==True: #Disable the default extension this run.
+                extension="";
             if len(args)>1:
                 args=" ".join(args);
                 args=args.strip();
@@ -1432,9 +1490,31 @@ if __name__=="__main__":
                     loadScheme(allFound[0], kind=whichScheme);
                 else:
                     if settings["openAll"]==False:
-                        subprocess.run([getApp(), allFound[0]]);
+                        if passphraseProtect==False or allFound[0].endswith(".asc")==True:
+                            if settings["kicrypt"]==True and allFound[0].endswith(".asc"):
+                                crypt(allFound[0], getApp());
+                            else:
+                                subprocess.run([getApp(), allFound[0]]); #This is what is usually run when a file is opened with the default settings.
+                        else:
+                            #If it's not encrypted, encrypt it instead of opening it.
+                            ascFound=os.path.isfile(allFound[0]+".asc");
+                            ynOverwrite="unassigned";
+                            if ascFound==True:
+                                ynOverwrite=askyn("""• A file called `{allFound[0]+".asc"}` already exists. Overwrite? (y/n)""");
+                            if ynOverwrite in {"y", "yes", "unassigned"}:
+                                encrypt_file(allFound[0], getApp());
+                                if os.path.isfile(allFound[0]+".asc")==True and allFound[0].endswith(".asc")==False:
+                                    #Delete allFound[0]
+                                    delOldKey=askyn("• Would you like to keep the unencrypted file?");
+                                    if delOldKey in {"no", "n"}:
+                                        os.remove(allFound[0]);
+                                        print("• Unencrypted file deleted.");
+                                    else:
+                                        print("• Unencrypted file kept.");
+                            else:
+                                print("• File not encrypted. File not overwritten.");
                     else:
-                        subprocess.run([getApp()]+allFound); #This is what is usually run when a file is opened with the default settings.
+                        subprocess.run([getApp()]+allFound);
             except IndexError:
                 ######
                 yn=None;
