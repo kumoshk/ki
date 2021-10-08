@@ -8,7 +8,7 @@ import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfil
 
 PN="Ki"; #Program name, used in the documentation.
 FN="ki"; #File name, used in the documentation and other areas.
-VER="0.11.0"; #The current program version.
+VER="0.11.1"; #The current program version.
 
 VERSION=f"""
 Version {VER}
@@ -112,13 +112,13 @@ Combinable options/flags:
 • -T: Disable the default directory this time only (no change if it is already disabled). See also -9, -B, -D, -d, and -t.
 • -t: Enable the default directory this time only (no change if it is already enabled). See also -9, -B, -D, -d, and -T.
 • -u: Use this to update {PN}. If you wish to do a system-wide update, you'll need to use `sudo python3 ki -u` or `sudo ki -u` (you don't need `sudo` on Termux).
-• -v: Print the version information (to save you the bother, it's version {VER}).
+• -v: Print the version information (to save you the bother, its version {VER}).
 • -X: This is like -p, except it's for the apps that are used when -x is provided. It's basically a second set of the same thing.
 • -x: This executes the file instead of opening it. For instance, instead of opening a .py file with nano, it may run it with python. This must be set each time you wish to use it (it doesn't toggle a saved variable).
 
 Non-combinable options/flags:
 • --about: About {PN}, contact, etc.
-• --aload: Load an app scheme (which apps open which extensions); separate file extensions and apps by semi-colons or new lines (list the file extension first, followed by the new default app to open it, followed by another file extension, followed by the app to open it, and so on; note that all semi-colons in the file are converted to new lines and all whitespace is stripped, so feel free to indent, add double new lines, or whatever; the first line should be a file extension, the second an app, and so on; it doesn't matter what the scheme is called, nor what it's file extension is; {PN} searches for the scheme file the same as any key, although it will only load one file even if {PN} is set to open all that it finds); e.g. `{FN} --aload myScheme.sch`, with `myScheme.sch` having such as these contents:
+• --aload: Load an app scheme (which apps open which extensions); separate file extensions and apps by semi-colons or new lines (list the file extension first, followed by the new default app to open it, followed by another file extension, followed by the app to open it, and so on; note that all semi-colons in the file are converted to new lines and all whitespace is stripped, so feel free to indent, add double new lines, or whatever; the first line should be a file extension, the second an app, and so on; it doesn't matter what the scheme is called, nor what its file extension is; {PN} searches for the scheme file the same as any key, although it will only load one file even if {PN} is set to open all that it finds); e.g. `{FN} --aload myScheme.sch`, with `myScheme.sch` having such as these contents:
 .txt;emacs
 .mp3;play
 .ini;nano
@@ -398,7 +398,7 @@ def perm(dp): #Test to see if you have permission to write in the directory (or 
     #print(os.access(dp, os.W_OK), os.access(dp, os.X_OK));
     #print(getPerm(dp));
     return os.access(dp, os.W_OK | os.X_OK);
-def setPerm(p, permissions): #Sets the permissions (e.g. 755). p is the file or directory path (it's permissions will be set). This function requires sudo privileges.
+def setPerm(p, permissions): #Sets the permissions (e.g. 755). p is the file or directory path (its permissions will be set). This function requires sudo privileges.
     subprocess.run(["chmod", "0"+permissions, p]);
 def is_exec(fp):
     #Tells if the file is executable or not.
