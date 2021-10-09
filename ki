@@ -8,7 +8,7 @@ import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfil
 
 PN="Ki"; #Program name, used in the documentation.
 FN="ki"; #File name, used in the documentation and other areas.
-VER="0.11.1"; #The current program version.
+VER="0.11.2"; #The current program version.
 
 VERSION=f"""
 Version {VER}
@@ -881,7 +881,7 @@ def crypt(filepath, app):
             newHash=hash(decryptedfp);
             #Check the hashes to see if changes were saved.
             if theHash!=newHash:
-                reEncrypt=input(f"• Would you like to re-encrypt and overwrite `{filepath}`? (y=yes, same passphrase, n=no, r=yes, new passphrase) ");
+                reEncrypt=ask(f"• Would you like to re-encrypt and overwrite `{filepath}`? (y=yes, same passphrase, n=no, r=yes, new passphrase) ", desired={"y", "n", "r"});
                 if reEncrypt=="r":
                     passphrase=ask("• Please enter a new passphrase: ", pw=True);
                     repassphrase=ask("• Please re-enter it: ", pw=True);
