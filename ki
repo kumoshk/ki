@@ -8,7 +8,7 @@ import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfil
 
 PN="Ki"; #Program name, used in the documentation.
 FN="ki"; #File name, used in the documentation and other areas.
-VER="0.11.2"; #The current program version.
+VER="0.11.3"; #The current program version.
 
 VERSION=f"""
 Version {VER}
@@ -137,6 +137,7 @@ bin;~/bin
 • --nsave: Save your current named directory scheme.
 • --save: With no arguments, this will prompt you to save a backup of {PN}'s application data. With arguments, it will use the arguments as your filepath for the new backup.
 • --settings: (Not implemented, yet.) This will print {PN}'s current settings to the screen.
+• --ver: print the version number only (no other information about the version).
 • --version: Print the version information. (FYI, it's version {VER}.)
 • --xload: Like `--aload`, but it loads an xapp scheme (the scheme of apps for executing files with -x).
 • --xsave: Save your current scheme of apps for executing files with -x.
@@ -917,7 +918,7 @@ if __name__=="__main__":
             flagSplit=flags.split(" ");
             args=flagSplit[1:];
             flags=flagSplit[0];
-            if flags.replace("-","") in {"aload", "nload", "xload", "help", "about", "version", "go", "license", "asave", "nsave", "xsave", "load", "save", "settings"}:
+            if flags.replace("-","") in {"aload", "nload", "xload", "help", "about", "ver", "version", "go", "license", "asave", "nsave", "xsave", "load", "save", "settings"}:
                 print("• Your chosen flags/options are arranged like a non-cominable option name. For safety reasons, in case this was an accident, the program will exit here without doing anything else. Use two hyphens for the non-combinable option.");
                 sys.exit(1);
             if "0" in flags: #Toggle whether to open/decrypt passphrase-protected files and offer to encrypt any saved changes to the temporary file and overwrite the original.
@@ -1352,6 +1353,9 @@ if __name__=="__main__":
                     args=[];
             elif pre=="--settings":
                 pass; #&&& This is to print the current settings/configuration.
+            elif pre=="--ver": #Print the version number only.
+                args=[];
+                print(VER);
             elif pre=="--version":
                 args=[]; #Clear the args so it won't do anything else.
                 print(VERSION);
