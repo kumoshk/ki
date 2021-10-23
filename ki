@@ -8,7 +8,7 @@ import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfil
 
 PN="Ki"; #Program name, used in the documentation.
 FN="ki"; #File name, used in the documentation and other areas.
-VER="0.11.3"; #The current program version.
+VER="0.11.4"; #The current program version.
 
 VERSION=f"""
 Version {VER}
@@ -86,8 +86,8 @@ The name {PN} (formerly key, but that was taken by Donkey) is inspired by dictio
 
 Combinable options/flags:
 [Note: You must include a hyphen before the flags/options, or else before each flag/option. If you omit the hyphens, the would-be flags/options will be treated as part of the key name.]
-• -0: Toggle whether to handle files such as `myFile.{FN}.asc` specially (when `.{FN}` is the default and you type `{PN} myFile`): decrypt them (symmetrically with a passphrase), then open them with the desired app for myExtension, then after the app closes, check to see if the file was saved; if it was saved, prompt to re-encrypt and overwrite the original. In short, this lets you open, edit, and save password-protected files. The default is false.
-• -1: Passphrase-protect (symmetrically encrypt) the key instead of opening it (and optionally keep the unencrypted file, too). If -0 has been toggled True, then `{FN} myFile` will decrypt and open `myFile.ki.asc` if you've deleted the original `myFile.ki`.
+• -0: Toggle whether to handle files such as `myFile.{FN}.asc` specially. What this does is decrypt the file in a temporary directory and open it there (opening it with the default app for the left extension); if you edit it, {PN} will offer to re-encrypt it and overwrite the original. In short, this lets you open, edit, and save passphrase-protected files. The default is false.
+• -1: Passphrase-protect (symmetrically encrypt) the key instead of opening it (and optionally keep the unencrypted file, too). If the file was named myFile.txt, then it will become myFile.txt.asc; see -0 if you wish to edit and save it (and other encrypted .asc files). Encryption is done with `cat tempPassphraseFilepath|gpg --batch --yes --passphrase-fd 0 --force-mdc --s2k-mode 3 --s2k-count 1000000 --s2k-cipher-algo AES256 --s2k-digest-algo SHA512 --compress-algo='BZIP2' --compress-level 9 --output=myOutputFile.ki.asc -ac myFilepath.ki` (see the warning section regarding the security of this).
 • -2: Toggle whether to open the specified extension instead of the default (this won't work for no extension). Note that if this is set, for instance, typing `{FN} test.{FN}` will open `test.{FN}` instead of `test.{FN}.{FN}` even when the default extension is `.{FN}`, but if you type `test.txt` it will open `test.txt` instead of `test.txt.{FN}` (again, when the default extension is `.{FN}`). The default setting is true.
 • -4: Toggle whether when specified extensions are opened (see -2) they become the new default or not. The default setting is false.
 • -8: Make the current working directory a base directory (you can have more than one).
@@ -100,6 +100,7 @@ Combinable options/flags:
 • -D: Toggle whether to use the default directory (default is false). This overrides everything else (and uses it as your current base directory no matter where you are). See also -9, -B, -d, -T, and -t.
 • -d: Toggle whether to use the default directory without saving the setting change (so it's changed for this execution only). See also -9, -B, -D, -T, and -t.
 • -e: This prompts you to set the default file extension.
+• -f: (Not implemented yet.) This loads a favorite. A favorite is a word that corresponds to a list of URIs. If they are files, {PN} will open them with the apps that {PN} is configured to open files of their file extensions with. If they are URLs, it will open them in a web browser (probably not a command-line one). Example: `{FN} -f journals` might open several different files, each with a journal in it. This is not compatible with flags/options that involve opening keys (since {PN} searches for no keys when it is used). Also see `--fload` and `--fsave`. Each favorite has its own settings, too; for instance, you should be able to set whether the usual app opens a file, or whether you specify it manually (maybe with a bunch of flags/options).
 • -h: Print the help.
 • -n: List the base directories, any named directories, and the default directory.
 • -o: Toggle whether {PN} opens multiple files with the same name (default is false).
@@ -124,6 +125,8 @@ Non-combinable options/flags:
 .ini;nano
 .ly;lilypond
 • --asave: Save your current app scheme.
+• --fload: (Not implemented yet.) This is used to load a scheme of favorites. (See `-f`.)
+• --fsave: (Not implemented yet.) This is used to save the current scheme of favorites. (See `-f`.)
 • --g or --go: Go to the last key directory. (FYI, this opens a new shell.) You can also open named directory structures with this: e.g. `{FN} --go books` will take you to `~/Documents/ebooks`, if you've named that path `books`.
 • --help: Print the help (without the option of doing other stuff at the same time).
 • --license: Print the license granted for use of {PN}.
@@ -146,7 +149,7 @@ Special options:
 • Begin search query with a colon (it won't open a key): Find all the files in the directory structure (or base or default directory structure), regardless of file extension (e.g. `{FN} :my search text` is the same as `grep -rliF --include=\* my\ search\ text /base/directory/**/`, or if it's the current working directory, it's like `grep -rliF --include=\* my\ search\ text ./`). Note that you can even do such as `{FN} -b myDir :mySearchCriteria`.
 
 Warnings:
-• See the license: i.e. `{PN} --license`.
+• See the license: i.e. `{FN} --license`.
 • {PN} saves your decisions for future uses of the program. {PN} is designed to be used directly by humans at least as much as it is otherwise (some flags/options prompt for user input and some toggle saved variables; so, you most likely won't be using those in a script). {PN} was made to make things easier for humans (only some flags/options are suitable for scripts, and even then you should be careful, since saved variables that you decide to change might influence what things do).
 • Should the program crash, note that it is possible that some data was not saved during that execution of {PN} (since the print statements occur before the saving in many instances, in order to make the code more efficient).
 • Not all combinable flags/options were intended to be used together. Some flag/option combinations may result in undesirable effects. Bugs could potentially exist with some combinations.
@@ -154,13 +157,14 @@ Warnings:
 • Flags/options should be evaluated in the order that they are listed in the help, but because internally some flags and/or options only trigger future events (like they might change a variable that causes the desired thing to happen further down in the code), this might not seem to be the case for some flags/options.
 • Flags/options may change between versions of {PN}. Always check the help after doing an update.
 • When doing an update, some things may or may not become incompatible that were associated with previous versions of {PN} (such as your saved backups of {PN}'s settings).
-• Encryption passphrases are temporarily saved to disk in a file before being piped into gpg with cat on the command-line. If I could use gpg's natural password-asking system, I would, but I don't know of a way to do that seemlessly in the desired fashion with symmetric encryption (yet). If it helps, I've at least made the filenames random and extremely difficult to read (I've done the same with the decrypted files themselves). I use the compiled gpg command-line app instead of a Python library is to avoid having to give {PN} the GNU GPL license. I like the GPL, but reading about how to apply it to my work gives me a headache, and I think it was primarily intended for such as C and C++ source code (not pure Python).
-• When you encrypt and unencrypt things, it resets the agent so your passphrases won't be remembered. This could be make gpg forget passwords you want it to remember if you're working with {PN} separately in the same computer session.
+• Encryption passphrases are saved to disk in a temporary file before being piped into gpg with cat on the command-line (the file is deleted when it's no longer necessary, but in theory, it's not secure if someone, or some malware, has access to your system while you're encrypting/decrypting/editing). If I could use gpg's natural passphrase-asking system, I would, but I don't know of a way to do that seemlessly in the desired fashion with symmetric encryption (yet); I could do such as `gpg output myFile.{FN}.asc --symmetric myFile.{FN}`, but then you'd have to enter your passphrase every time you saved an edit, and it would complain at you every time you entered an insecure passphrase; if you're not in Termux, it would launch a GUI-based passphrase entry-box (which could pose some issues, especially if the GUI-based box doesn't stop {PN} from moving on). If it helps, I've at least made the filenames random and extremely difficult to read (I've done the same with the decrypted files themselves). FYI, if you're wondering why I don't just use the GPG Python library to solve these problems, it's because that would necessitate that I license the code under the GNU GPL; also, the GPG Python library wasn't well-documented last I checked when I initially made the decryption software (years ago). I like the GPL, but reading about how to apply it to my work gives me a headache, and I think it was primarily intended for such as C and C++ source code (not pure Python).
+• When you encrypt and unencrypt things, it resets the agent so your passphrases won't be remembered. This could be make gpg forget passwords you want it to remember if you're working with gpg and {PN} separately in the same computer session.
 
 Tips:
 • Set the default extension to blank (with `{FN} -e`) if you want to have to specify the extension manually every time (e.g. `{FN} myFile` will open a file called `myFile` and `{FN} myFile.ki` will open a file called `myFile.ki`).
 • If you need to find the application data, it's at `~/.{FN}_kumoshk`.
 • If you're in nano, and want to insert text from a file in a far away place, you can do such as this (assuming you've previously named a directory path `pathName` with `{FN} -B` or `{FN} --nload myScheme`: ctrl+t (in nano) then `{FN} -ab cat pathName myFile`; note that `pathName` should not be confused with an actual path; it's just an abstract name that you invented earlier yourself that represents the path.
+• You can't specify flags/options with the new app when using -a and -A (but you can supply them with such as -p and --xload).
 
 Unaffiliated command-line stuff to accompany {PN}:
 • Use `tree myDirectory` or `ls -R myDirectory` to show the contents of a directory structure recursively.
@@ -220,17 +224,6 @@ else:
     settings["xapp"]="cat"; #This is the default app to execute files with when they're not already set to be executable.
     settings["apps"]={}; #Default apps to open the various file extensions. Keys are file extensions and values are the apps to open them.
     settings["xapps"]={}; #xapps is to xapp as apps is to app
-    settings["xapps"][".py"]="python3";
-    settings["xapps"][".lua"]="lua5.4";
-    settings["xapps"][".rb"]="ruby";
-    settings["xapps"][".pl"]="perl";
-    settings["xapps"][".vala"]="valac";
-    settings["xapps"][".gs"]="valac"; #Compiling Genie code
-    settings["xapps"][".ly"]="lilypond";
-    settings["xapps"][".java"]="javac";
-    soundApps="8svx aif aifc aiff aiffc al amb au avr caf cdda cdr cvs cvsd cvu dat dvms f32 f4 f64 f8 fap flac fssd gsm gsrt hcom htk ima ircam la lpc lpc10 lu mat mat4 mat5 maud mp2 mp3 nist ogg opus paf prc pvf raw s1 s16 s2 s24 s3 s32 s4 s8 sb sd2 sds sf sl sln smp snd sndfile sndr sndt sou sox sph sw txw u1 u16 u2 u24 u3 u32 u4 u8 ub ul uw vms voc vorbis vox w64 wav wavpcm wve xa xi m3u pls".split(" ");
-    for x in soundApps:
-        settings["xapps"]["."+x]="play";
     settings["lastKeyDir"]=None; #Directory of the last key opened.
     settings["defaultDir"]=None; #This is a saved directory for frequent use, which can be changed. You can use it even when you're not in it.
     settings["useDefault"]=False; #If this is true then when you're not in a base directory, it will act as if you are in the default directory structure no matter where you are.
@@ -383,6 +376,15 @@ if settings["firstRun"]==True:
             print("`.nanorc settings written.`");
         else:
             print("`.nanorc` settings not written.");
+    if os.path.isdir("/data/data/com.termux/files/"):
+        if shutil.which("gpg")==None:
+            subprocess.run("pkg update", shell=True);
+            subprocess.run("pkg install gnupg", shell=True);
+    else:
+        if shutil.which("gpg")==None:
+            print("GNU Privacy Guard is not installed. Installing it now.");
+            subprocess.run("sudo apt-get update", shell=True);
+            subprocess.run("sudo apt-get install gnupg", shell=True);
 
 ######
 
@@ -473,14 +475,14 @@ def getApp():
         return oneTimeApp;
     elif execute_it==True:
         if extension in settings["xapps"]:
-            return settings["xapps"][extension];
+            return shlex.split(settings["xapps"][extension]);
         else:
-            return settings["xapp"];
+            return shlex.split(settings["xapp"]);
     else:
         if extension in settings["apps"]:
-            return settings["apps"][extension];
+            return shlex.split(settings["apps"][extension]);
         else:
-            return settings["app"];
+            return shlex.split(settings["app"]);
 
 def addCurrentBaseDir(thePath=None): #Make the current working directory a base directory.
     global settings, path, save_it;
@@ -600,7 +602,7 @@ def updateProgram(): #Update the program
             updatePath=None;
             def updateLocal():
                 recommendedPath="/opt/bin";
-                if path.startswith("/data/data/com.termux/files/"):
+                if os.path.isdir("/data/data/com.termux/files/"):
                     recommendedPath="/data/data/com.termux/files/usr/opt/bin";
                 upDir=askdir(f"• Please enter a path in which to install {PN}:", default_dir=recommendedPath, default_dir2=os.path.dirname(pp), default_dir3="~/bin");
                 if upDir==None:
@@ -670,7 +672,7 @@ def updateProgram(): #Update the program
                         FN2path=f"export PATH=$PATH:{os.path.expanduser(updatePath)}";
                         bin2path=f"export PATH=$PATH:{os.path.expanduser('~/bin')}";
                         opt2path=f"export PATH=$PATH:{os.path.expanduser('/opt/bin')}";
-                        if path.startswith("/data/data/com.termux/files/"):
+                        if os.path.isdir("/data/data/com.termux/files/"):
                             opt2path=f"export PATH=$PATH:/data/data/com.termux/files/usr/opt/bin";
                         if os.path.isdir(bashrc):
                             print(f"• Error. `{bashrc} is a directory when it should be a file.` Not added to path.");
@@ -835,7 +837,7 @@ def gpg_encrypt(filepath, passphrase=None, output=None, alg="AES256", hash="SHA5
     if result.strip()==b"":
         print("• File encrypted.");
     return result.strip();
-def encrypt_file(filepath, app):
+def encrypt_file(filepath):
     if os.path.basename(filepath).endswith(".asc")==False:
         encrypt=False;
         passphrase=ask("• Please enter a new passphrase: ", pw=True);
@@ -877,7 +879,7 @@ def crypt(filepath, app):
             #Hash the decrypted file.
             theHash=hash(decryptedfp);
             #Open with app
-            subprocess.run([app, decryptedfp]);
+            subprocess.run(app+[decryptedfp]);
             #Take a new hash of the decrypted file.
             newHash=hash(decryptedfp);
             #Check the hashes to see if changes were saved.
@@ -1498,7 +1500,7 @@ if __name__=="__main__":
                             if settings["kicrypt"]==True and allFound[0].endswith(".asc"):
                                 crypt(allFound[0], getApp());
                             else:
-                                subprocess.run([getApp(), allFound[0]]); #This is what is usually run when a file is opened with the default settings.
+                                subprocess.run(getApp()+[allFound[0]]); #This is what is usually run when a file is opened with the default settings.
                         else:
                             #If it's not encrypted, encrypt it instead of opening it.
                             ascFound=os.path.isfile(allFound[0]+".asc");
@@ -1506,7 +1508,7 @@ if __name__=="__main__":
                             if ascFound==True:
                                 ynOverwrite=askyn("""• A file called `{allFound[0]+".asc"}` already exists. Overwrite? (y/n)""");
                             if ynOverwrite in {"y", "yes", "unassigned"}:
-                                encrypt_file(allFound[0], getApp());
+                                encrypt_file(allFound[0]);
                                 if os.path.isfile(allFound[0]+".asc")==True and allFound[0].endswith(".asc")==False:
                                     #Delete allFound[0]
                                     delOldKey=askyn("• Would you like to keep the unencrypted file?");
@@ -1518,7 +1520,7 @@ if __name__=="__main__":
                             else:
                                 print("• File not encrypted. File not overwritten.");
                     else:
-                        subprocess.run([getApp()]+allFound);
+                        subprocess.run(getApp()+allFound);
             except IndexError:
                 ######
                 yn=None;
@@ -1549,7 +1551,7 @@ if __name__=="__main__":
                             print("• Sorry, a directory named `"+args+"` already exists. Key not created.");
                         else:
                             print("• "+args+" created.");
-                            subprocess.run([getApp(), args]);
+                            subprocess.run(getApp()+[args]);
                             if os.path.isdir(args):
                                 print("ERROR: `"+args+"` is a directory???");
                             else:
@@ -1568,7 +1570,7 @@ if __name__=="__main__":
                         if perm(file)==True:
                             subprocess.run(["touch", file]);
                             print("• "+args+" created in the default directory:\n"+file);
-                            subprocess.run([getApp(), file]);
+                            subprocess.run(getApp()+[file]);
                         else:
                             print("• You do not have permission to create `"+file+"`.");
                     else:
@@ -1589,7 +1591,7 @@ if __name__=="__main__":
                                     if perm(file)==True:
                                         subprocess.run(["touch", file]);
                                         print("• "+args+" created in the last-accessed base directory:\n"+file);
-                                        subprocess.run([getApp(), file]);
+                                        subprocess.run(getApp()+[file]);
                                     else:
                                         print("• You do not have permission to create `"+file+"`.");
                                 else:
@@ -1603,7 +1605,7 @@ if __name__=="__main__":
                             if perm(file)==True:
                                 subprocess.run(["touch", file]);
                                 print("• "+args+" created in the base directory:\n"+file);
-                                subprocess.run([getApp(), file]);
+                                subprocess.run(getApp()+[file]);
                             else:
                                 print("• You do not have permission to create `"+file+"`.");
                 elif yn=="k":
@@ -1616,7 +1618,7 @@ if __name__=="__main__":
                         if perm(file)==True:
                             subprocess.run(["touch", file]);
                             print("• "+args+" created in the last key directory:\n"+file);
-                            subprocess.run([getApp(), file]);
+                            subprocess.run(getApp()+[file]);
                         else:
                             print("• You do not have permission to create `"+file+"`.");
                 else:
