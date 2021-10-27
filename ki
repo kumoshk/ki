@@ -8,7 +8,8 @@ import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfil
 
 PN="Ki"; #Program name, used in the documentation.
 FN="ki"; #File name, used in the documentation and other areas.
-VER="0.11.4"; #The current program version.
+VER="0.11.5"; #The current program version.
+PROTOCOL=5; #This is the protocol for pickling. If not available, the latest one available will be used.
 
 VERSION=f"""
 Version {VER}
@@ -208,35 +209,77 @@ def bu(): #Return backup file dictionary
         result=pickle.load(FILE);
     return result;
 
+def init_settings():
+    global settings;
+    global backupDictPath;
+    global VER;
+    global PROTOCOL;
+    settings["version"]=VER; #This is used to check to see if you're running a new version.
+    if "extension" not in settings:
+        settings["extension"]=f".{FN}"; #Unimplemented
+    if "scriptExtension" not in settings:
+        settings["scriptExtension"]=".ks"; #Unimplemented; Files with this extension, rather than just being opened, can perform various actions (such as specify a list of files to open, open random files, according to a set of likelihoods, etc.).
+    if "firstRun" not in settings:
+        settings["firstRun"]=True;
+    if "gpg_path" not in settings:
+        settings["gpg_path"]="gpg";
+    if "kicrypt" not in settings:
+        settings["kicrypt"]=False; #Toggle how to handle such as myfile.ki.asc when .ki is the default and you type ki myfile
+    if "app" not in settings:
+        settings["app"]="nano"; #This is the default app for opening files; 'apps' below overrides this, however.
+    if "named_dirs" not in settings:
+        settings["named_dirs"]={}; #These are your saved directories for you to access by a chosen abstract name, rather than by typing in the path for it.
+    if "xapp" not in settings:
+        settings["xapp"]="cat"; #This is the default app to execute files with when they're not already set to be executable.
+    if "apps" not in settings:
+        settings["apps"]={}; #Default apps to open the various file extensions. Keys are file extensions and values are the apps to open them.
+    if "xapps" not in settings:
+        settings["xapps"]={}; #xapps is to xapp as apps is to app
+    if "lastKeyDir" not in settings:
+        settings["lastKeyDir"]=None; #Directory of the last key opened.
+    if "defaultDir" not in settings:
+        settings["defaultDir"]=None; #This is a saved directory for frequent use, which can be changed. You can use it even when you're not in it.
+    if "useDefault" not in settings:
+        settings["useDefault"]=False; #If this is true then when you're not in a base directory, it will act as if you are in the default directory structure no matter where you are.
+    if "baseDirs" not in settings:
+        settings["baseDirs"]=set(); #This is a set of directories. If you're within these when you use Ki, it will always search from it even when in its subdirectories. You can't set both a directory and one of its subdirectories to be in baseDirs.
+    if "baseDir" not in settings:
+        settings["baseDir"]=None; #This is the current base directory (of if there is no current one, it is the last base directory used).
+    if "searchBaseDir" not in settings:
+        settings["searchBaseDir"]=True; #Whether or not to search for keys from the base dir when in its subdirectories (and so on recursively).
+    if "openAll" not in settings:
+        settings["openAll"]=False; #Whether or not to open all files found or just one.
+    if "setOpenDefault" not in settings:
+        settings["setOpenDefault"]=False; #Whether opening a file with a specific extension sets that extension to be the default.
+    if "openSpecifiedExt" not in settings:
+        settings["openSpecifiedExt"]=True; #Whether you can open extensions that aren't the default just by typing them in (this won't work for blank extensions).
+    with open(backupDictPath, "wb") as FILE:
+        try:
+            pickle.dump(settings, FILE, protocol=PROTOCOL);
+        except ValueError:
+            pickle.dump(settings, FILE, protocol=-1);
+
+save_it=False; #If set to True, settings will be saved (pickled). Calling saveSettings() sets it back to False.
+
 #Load the settings, if they've been saved.
 settingsDictPath=os.path.join(settingsPath, "settings_dict.pkl");
 if os.path.exists(settingsDictPath) and os.path.exists(backupDictPath):
     with open(settingsDictPath, "rb") as FILE:
         settings=pickle.load(FILE);
+    if "version" in settings:
+        if settings["version"]!=VER:
+            print(f"• You have installed {PN} {VER}, which does not match the version you used last ({settings['version']}). Updating the settings for compatibility.");
+            init_settings();
+            save_it=True;
+    else:
+        print(f"• You have installed {PN} {VER}, which does not match the one you used last. Updating the settings for compatibility.");
+        init_settings();
+        save_it=True;
 else:
-    settings["extension"]=f".{FN}"; #Unimplemented
-    settings["scriptExtension"]=".ks"; #Unimplemented; Files with this extension, rather than just being opened, can perform various actions (such as specify a list of files to open, open random files, according to a set of likelihoods, etc.).
-    settings["firstRun"]=True;
-    settings["gpg_path"]="gpg";
-    settings["kicrypt"]=False; #Toggle how to handle such as myfile.ki.asc when .ki is the default and you type ki myfile
-    settings["app"]="nano"; #This is the default app for opening files; 'apps' below overrides this, however.
-    settings["named_dirs"]={}; #These are your saved directories for you to access by a chosen abstract name, rather than by typing in the path for it.
-    settings["xapp"]="cat"; #This is the default app to execute files with when they're not already set to be executable.
-    settings["apps"]={}; #Default apps to open the various file extensions. Keys are file extensions and values are the apps to open them.
-    settings["xapps"]={}; #xapps is to xapp as apps is to app
-    settings["lastKeyDir"]=None; #Directory of the last key opened.
-    settings["defaultDir"]=None; #This is a saved directory for frequent use, which can be changed. You can use it even when you're not in it.
-    settings["useDefault"]=False; #If this is true then when you're not in a base directory, it will act as if you are in the default directory structure no matter where you are.
-    settings["baseDirs"]=set(); #This is a set of directories. If you're within these when you use Ki, it will always search from it even when in its subdirectories. You can't set both a directory and one of its subdirectories to be in baseDirs.
-    settings["baseDir"]=None; #This is the current base directory (of if there is no current one, it is the last base directory used).
-    settings["searchBaseDir"]=True; #Whether or not to search for keys from the base dir when in its subdirectories (and so on recursively).
-    settings["openAll"]=False; #Whether or not to open all files found or just one.
-    settings["setOpenDefault"]=False; #Whether opening a file with a specific extension sets that extension to be the default.
-    settings["openSpecifiedExt"]=True; #Whether you can open extensions that aren't the default just by typing them in (this won't work for blank extensions).
-    with open(backupDictPath, "wb") as FILE:
-        pickle.dump(settings, FILE, protocol=5);
+    print(f"• Initiating settings for {PN} {VER}.");
+    init_settings();
+    save_it=True;
 
-save_it=False; #If set to True, settings will be saved (pickled). Calling saveSettings() sets it back to False.
 oneTimeApp=None;
 ddd=False; #Disable the default extension this run.
 passphraseProtect=False; #Passphrase-protect the key instead of opening it.
@@ -248,13 +291,19 @@ useDefault=settings["useDefault"]; #This is so we can do one-time uses of the de
 
 def saveSettings():
     #Use this wherever you want to save the settings.
-    global save_it, settings;
+    global save_it, settings, PROTOCOL;
     save_it=False; #To make sure we don't do redundant saves.
     with open(settingsDictPath, "wb") as FILE:
-        pickle.dump(settings, FILE, protocol=5);
+        try:
+            pickle.dump(settings, FILE, protocol=PROTOCOL);
+        except ValueError:
+            pickle.dump(settings, FILE, protocol=-1);
     if settings["firstRun"]==True:
         with open(backupDictPath, "wb") as FILE:
-            pickle.dump(settings, FILE, protocol=5);
+            try:
+                pickle.dump(settings, FILE, protocol=PROTOCOL);
+            except ValueError:
+                pickle.dump(settings, FILE, protocol=-1);
 
 baseDir=None;
 for x in settings["baseDirs"]:
@@ -343,7 +392,7 @@ def askdir(question, pw=False, ask_file=False, must_exist=True, must_perm=True, 
             else:
                 return response;
         else: #must_exist==True and the file exist:
-            createyn=askyn(f"The path, `{response}` does not exist. Would you like to create it?");
+            createyn=askyn(f"• The path, `{response}` does not exist. Would you like to create it?");
             if createyn in {"yes", "y"}:
                 os.makedirs(response);
                 if not os.path.isdir(response):
@@ -373,16 +422,16 @@ if settings["firstRun"]==True:
             print("• For tips on how to use nano, see\n• <https://www.growspice.com/A-desktop-user-s-guide-to-Nano-a-command-line-text-editor-td3471.html>.\n• If you want the spellcheck to work, don't forget to do `sudo apt-get install hunspell`.");
             with open(nanorc_path, "w") as FILE:
                 FILE.write(NANORC);
-            print("`.nanorc settings written.`");
+            print("• `.nanorc settings written.`");
         else:
-            print("`.nanorc` settings not written.");
+            print("• `.nanorc` settings not written.");
     if os.path.isdir("/data/data/com.termux/files/"):
         if shutil.which("gpg")==None:
             subprocess.run("pkg update", shell=True);
             subprocess.run("pkg install gnupg", shell=True);
     else:
         if shutil.which("gpg")==None:
-            print("GNU Privacy Guard is not installed. Installing it now.");
+            print("• GNU Privacy Guard is not installed. Installing it now.");
             subprocess.run("sudo apt-get update", shell=True);
             subprocess.run("sudo apt-get install gnupg", shell=True);
 
@@ -416,9 +465,9 @@ def set_exec(fp, set_it=True): #Make the file executable or not executable
             subprocess.run(["chmod", "-x", fp]); #make the file not executable
     else:
         if isdir==True:
-            raise PermissionError("You don't have permission to change the executable status of `"+os.path.basename(fp)+"`.");
+            raise PermissionError("• You don't have permission to change the executable status of `"+os.path.basename(fp)+"`.");
         else:
-            raise FileNotFoundError("`"+fp+"` does not exist.");
+            raise FileNotFoundError("• `"+fp+"` does not exist.");
 
 def programPath(): #Get the file path of Ki.
     #pp=os.path.join(sys.path[0], sys.argv[0]);
@@ -469,10 +518,10 @@ def eglob(p1, p2, recursive=False): #escaping variant of glob
                 to_return.remove(x);
     return to_return;
 
-def getApp():
+def getApp(): #Returns a list containing the app to be used to open the key.
     global extension, oneTimeApp;
     if oneTimeApp!=None:
-        return oneTimeApp;
+        return [oneTimeApp];
     elif execute_it==True:
         if extension in settings["xapps"]:
             return shlex.split(settings["xapps"][extension]);
@@ -630,7 +679,7 @@ def updateProgram(): #Update the program
                     return False;
                 else:
                     updatePath=ulresult[1];
-                print("We have permission.");
+                print("• We have permission.");
                 if os.path.exists(updatePath):
                     os.remove(updatePath);
                 #print(tempDownload, updatePath);
@@ -702,7 +751,7 @@ def updateProgram(): #Update the program
                                     #print(os.path.dirname(FN2path), {bin2path, opt2path});
                                     FILE.write(f"{bin2path}\n{opt2path}");
                             subprocess.run(f"bash {bashrc}", shell=True);
-                            print(f"Restarted `{bashrc}`.");
+                            print(f"• Restarted `{bashrc}`.");
                 else:
                     print(f"• {PN} was not put in the path (but if it was already in the path before the update, it should still be there).");
                     return None;
@@ -1017,7 +1066,7 @@ if __name__=="__main__":
                 else:
                     print("• Default directory disabled (this time only).");
             if "e" in flags: #Set the default extension.
-                ext_set=input("Please enter a file extension to be the default (blank for no file extension; `.` for cancel; current default=`"+settings["extension"]+"`): ");
+                ext_set=input("• Please enter a file extension to be the default (blank for no file extension; `.` for cancel; current default=`"+settings["extension"]+"`): ");
                 if ext_set!=None:
                     if ext_set==".":
                         print("• The default file extension has not been changed.");
@@ -1207,7 +1256,7 @@ if __name__=="__main__":
                     else:
                         obackup=None;
                         if os.path.isfile(schemefp)==True:
-                            obackup=ask(f"`{schemefp}` already exists. Overwrite? ");
+                            obackup=ask(f"• `{schemefp}` already exists. Overwrite? ");
                         if os.path.isdir(schemefp)==True:
                             print(f"• `{schemefp}` is a directory; app scheme not saved.");
                         else:
@@ -1218,7 +1267,7 @@ if __name__=="__main__":
                 else:
                     obackup=None;
                     if os.path.isfile(args[0])==True:
-                        obackup=ask(f"`{args[0]}` already exists. Overwrite? ");
+                        obackup=ask(f"• `{args[0]}` already exists. Overwrite? ");
                     if os.path.isdir(args[0])==True:
                         print(f"• `{args[0]}` is a directory. App scheme not saved.");
                     else:
@@ -1270,7 +1319,7 @@ if __name__=="__main__":
                             subprocess.run(f"cp {schemefp} {settingsDictPath}", shell=True);
                             print("• Backup restored.");
                         else:
-                            print(f"`{schemefp}` is not a file; backup not restored.");
+                            print(f"• `{schemefp}` is not a file; backup not restored.");
                             sys.exit(1);
                 else:
                     if os.path.isdir(args[0])==True:
@@ -1309,7 +1358,7 @@ if __name__=="__main__":
                     else:
                         obackup=None;
                         if os.path.isfile(schemefp)==True:
-                            obackup=ask(f"`{schemefp}` already exists. Overwrite? ");
+                            obackup=ask(f"• `{schemefp}` already exists. Overwrite? ");
                         if os.path.isdir(schemefp)==True:
                             print(f"• `{schemefp}` is a directory; xapp scheme not saved.");
                         else:
@@ -1320,7 +1369,7 @@ if __name__=="__main__":
                 else:
                     obackup=None;
                     if os.path.isfile(args[0])==True:
-                        obackup=ask(f"`{args[0]}` already exists. Overwrite? ");
+                        obackup=ask(f"• `{args[0]}` already exists. Overwrite? ");
                     if os.path.isdir(args[0])==True:
                         print(f"• `{args[0]}` is a directory; directory name scheme not saved.");
                     else:
@@ -1343,7 +1392,7 @@ if __name__=="__main__":
                 else:
                     obackup=None;
                     if os.path.isfile(args[0])==True:
-                        obackup=ask(f"`{args[0]}` already exists. Overwrite? ");
+                        obackup=ask(f"• `{args[0]}` already exists. Overwrite? ");
                     if os.path.isdir(args[0])==True:
                         print(f"• `{args[0]}` is a directory. Settings not backed up.");
                     else:
@@ -1395,7 +1444,7 @@ if __name__=="__main__":
                 else:
                     obackup=None;
                     if os.path.isfile(args[0])==True:
-                        obackup=ask(f"`{args[0]}` already exists. Overwrite? ");
+                        obackup=ask(f"• `{args[0]}` already exists. Overwrite? ");
                     if os.path.isdir(args[0])==True:
                         print(f"• `{args[0]}` is a directory; xapp scheme not saved.");
                     else:
@@ -1500,6 +1549,7 @@ if __name__=="__main__":
                             if settings["kicrypt"]==True and allFound[0].endswith(".asc"):
                                 crypt(allFound[0], getApp());
                             else:
+                                #print("getApp", getApp(), "[allFound[0]]", [allFound[0]]);
                                 subprocess.run(getApp()+[allFound[0]]); #This is what is usually run when a file is opened with the default settings.
                         else:
                             #If it's not encrypted, encrypt it instead of opening it.
@@ -1553,7 +1603,7 @@ if __name__=="__main__":
                             print("• "+args+" created.");
                             subprocess.run(getApp()+[args]);
                             if os.path.isdir(args):
-                                print("ERROR: `"+args+"` is a directory???");
+                                print("• ERROR: `"+args+"` is a directory???");
                             else:
                                 pass;
                                 #print("HERE"); #Working normally.
