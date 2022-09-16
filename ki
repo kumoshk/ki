@@ -8,7 +8,7 @@ import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfil
 
 PN="Ki"; #Program name, used in the documentation.
 FN="ki"; #File name, used in the documentation and other areas.
-VER="0.12.6"; #The current program version.
+VER="0.12.7"; #The current program version.
 PROTOCOL=5; #This is the protocol for pickling. If not available, the latest one available will be used.
 
 VERSION=f"""
@@ -570,7 +570,7 @@ def setDefaultDir(name=None, activate=False):
     global settings;
     global baseDir;
     global save_it;
-    global use_default;
+    global useDefault;
     if name!=None:
         if name in settings["named_dirs"]:
             setfp=settings["named_dirs"][name];
@@ -1096,13 +1096,16 @@ if __name__=="__main__":
                     print("• You don't have any base directories set to clear.");
             if "D" in flags: #Toggle whether to use the default directory when you aren't in a base directory.
                 settings["useDefault"]=not settings["useDefault"];
+                print("• Default directory: "+settings["defaultDir"]);
                 print("• Use default directory (when not in a base directory structure) set to "+str(settings["useDefault"])+".");
                 save_it=True;
             if "d" in flags: #Make it so the default directory is used (this time only). Or, if the default directory is enabled, this makes it so it isn't used (this time only).
                 useDefault=not useDefault; #Toggle it, without saving settings["useDefault"];
                 if useDefault==True:
+                    print("• Default directory: "+settings["defaultDir"]);
                     print("• Default directory enabled (this time only).");
                 else:
+                    print("• Default directory: "+settings["defaultDir"]);
                     print("• Default directory disabled (this time only).");
             if "e" in flags: #Set the default extension.
                 ext_set=input("• Please enter a file extension to be the default (blank for no file extension; `.` for cancel; current default=`"+settings["extension"]+"`): ");
