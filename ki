@@ -8,7 +8,7 @@ import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfil
 
 PN="Ki"; #Program name, used in the documentation.
 FN="ki"; #File name, used in the documentation and other areas.
-VER="0.12.5"; #The current program version.
+VER="0.12.6"; #The current program version.
 PROTOCOL=5; #This is the protocol for pickling. If not available, the latest one available will be used.
 
 VERSION=f"""
@@ -174,7 +174,8 @@ Unaffiliated command-line stuff to accompany {PN}:
 • Use `tree myDirectory` or `ls -R myDirectory` to show the contents of a directory structure recursively.
 """.strip();
 
-NANORC="""set tabsize 4
+NANORC="""
+set tabsize 4
 set tabstospaces
 set nowrap
 set softwrap
@@ -182,11 +183,13 @@ set autoindent
 set atblanks
 set afterends
 set zap
-set nonewlines
+#set nonewlines
 #set multibuffer
 set speller "hunspell -x -c"
 set rawsequences
 bind ^H chopwordleft main
+bind F1 scrollup main
+bind F2 scrolldown main
 """;
 
 ######
