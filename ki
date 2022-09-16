@@ -8,7 +8,7 @@ import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfil
 
 PN="Ki"; #Program name, used in the documentation.
 FN="ki"; #File name, used in the documentation and other areas.
-VER="0.11.5"; #The current program version.
+VER="0.12.5"; #The current program version.
 PROTOCOL=5; #This is the protocol for pickling. If not available, the latest one available will be used.
 
 VERSION=f"""
@@ -43,7 +43,7 @@ DONATE="";
 if datetime.datetime.today().weekday() not in {5, 6, 0}:
     DONATE=f"""
 Donations:
-If you wish to donate to the programmer, register at my website and send the administrator (Radishrain) an email through it, Tuesday through Friday, stating the amount you wish to donate. Then, I can request that amount from you via PayPal.
+I still need to decide what to say about donations, but I do not accept PayPal, nor cryptocurrency, each for ethical reasons.
 """.strip();
 
 ABOUT=f"""
@@ -102,8 +102,10 @@ Combinable options/flags:
 • -d: Toggle whether to use the default directory without saving the setting change (so it's changed for this execution only). See also -9, -B, -D, -T, and -t.
 • -e: This prompts you to set the default file extension.
 • -f: (Not implemented yet.) This loads a favorite. A favorite is a word that corresponds to a list of URIs. If they are files, {PN} will open them with the apps that {PN} is configured to open files of their file extensions with. If they are URLs, it will open them in a web browser (probably not a command-line one). Example: `{FN} -f journals` might open several different files, each with a journal in it. This is not compatible with flags/options that involve opening keys (since {PN} searches for no keys when it is used). Also see `--fload` and `--fsave`. Each favorite has its own settings, too; for instance, you should be able to set whether the usual app opens a file, or whether you specify it manually (maybe with a bunch of flags/options).
+• -g: Like -b, but it also makes the named directory the default directory, and makes the default directory active (not to be confused with --g and --go, although it has similar uses).
 • -h: Print the help.
 • -n: List the base directories, any named directories, and the default directory.
+• -N: Give the current working directory structure a name (the first argument without a space will be the name). Note that this does not make the directory a base directory (nor does it require it to be one). A single directory may be given multiple names.
 • -o: Toggle whether {PN} opens multiple files with the same name (default is false).
 • -P: Prompts you to undo a specific customization previously made with -p or -X.
 • -p: Prompts you for a specific file extension to open with a specific app, every time; you can also set the default extension here.
@@ -126,6 +128,7 @@ Non-combinable options/flags:
 .ini;nano
 .ly;lilypond
 • --asave: Save your current app scheme.
+• --do: This is like --go [named directory], but it also makes it the default directory, and activates the default directory.
 • --fload: (Not implemented yet.) This is used to load a scheme of favorites. (See `-f`.)
 • --fsave: (Not implemented yet.) This is used to save the current scheme of favorites. (See `-f`.)
 • --g or --go: Go to the last key directory. (FYI, this opens a new shell.) You can also open named directory structures with this: e.g. `{FN} --go books` will take you to `~/Documents/ebooks`, if you've named that path `books`.
@@ -558,46 +561,79 @@ def addCurrentBaseDir(thePath=None): #Make the current working directory a base 
     save_it=True;
     return True;
 
-def setDefaultDir():
+def setDefaultDir(name=None, activate=False):
     #Make the current or last-accessed base directory the default directory, or if there is none, make the current working directory the default directory (and a base directory).
     global path;
     global settings;
     global baseDir;
     global save_it;
-    if settings["baseDir"]==None:
-        yn=askyn("• No base directories exist. Would you like to make the current working directory a base directory (and the default directory)? (y/n) ");
-        if yn in {"y", "yes"}:
-            addCurrentBaseDir();
-            #settings["baseDirs"].add(path);
-            settings["defaultDir"]=path;
-            baseDir=path;
-            settings["baseDir"]=path;
-            print("• The current working directory is now a base directory and the default directory.");
-            save_it=True;
+    global use_default;
+    if name!=None:
+        if name in settings["named_dirs"]:
+            setfp=settings["named_dirs"][name];
+            if setfp in settings["baseDirs"]:
+                settings["defaultDir"]=setfp;
+                print(f"• `{setfp}` is now the default directory.");
+                if activate==True:
+                    settings["useDefault"]=True;
+                    useDefault=True;
+                    print("• The default directory is now active.");
+                    path=settings["named_dirs"][name];
+                    baseDir=path;
+                    os.chdir(path);
+                save_it=True;    
+            else:
+                print(f"• `{setfp}` is not a base directory, and cannot be made the default directory.");
         else:
-            print("• New default directory not set.");
+            print(f"• `{name}` is not the name of a base directory.");
     else:
-        if baseDir==None:
-            settings["defaultDir"]=path;
-            itWorked=addCurrentBaseDir();
-            #settings["baseDirs"].add(path);
-            if itWorked==True:
-                print("• The current working directory is now set to be the default directory.");
+        if settings["baseDir"]==None:
+            yn=askyn("• No base directories exist. Would you like to make the current working directory a base directory (and the default directory)? (y/n) ");
+            if yn in {"y", "yes"}:
+                addCurrentBaseDir();
+                #settings["baseDirs"].add(path);
+                settings["defaultDir"]=path;
+                baseDir=path;
+                settings["baseDir"]=path;
+                print("• The current working directory is now a base directory and the default directory.");
+                if activate==True:
+                    settings["useDefault"]=True;
+                    useDefault=True;
+                    print("• The default directory is now active.");
+                save_it=True;
             else:
-                print("• The current working directory has not been set to be the default directory.");
+                print("• New default directory not set.");
         else:
-            settings["defaultDir"]=settings["baseDir"];
-            if settings["defaultDir"]==baseDir:
-                print("• The current base directory is now set to be the default directory:\n"+settings["defaultDir"]);
+            if baseDir==None:
+                settings["defaultDir"]=path;
+                itWorked=addCurrentBaseDir();
+                #settings["baseDirs"].add(path);
+                if itWorked==True:
+                    print("• The current working directory is now set to be the default directory.");
+                    if activate==True:
+                        settings["useDefault"]=True;
+                        useDefault=True;
+                        print("• The default directory is now active.");
+                else:
+                    print("• The current working directory has not been set to be the default directory.");
             else:
-                print("• The last-accessed base directory is now set to be the default directory:\n"+settings["defaultDir"]);
-        save_it=True;
+                settings["defaultDir"]=settings["baseDir"];
+                if settings["defaultDir"]==baseDir:
+                    print("• The current base directory is now set to be the default directory:\n"+settings["defaultDir"]);
+                else:
+                    print("• The last-accessed base directory is now set to be the default directory:\n"+settings["defaultDir"]);
+                if activate==True:
+                    settings["useDefault"]=True;
+                    useDefault=True;
+                    print("• The default directory is now active.");
+            save_it=True;
 
-def nameDir(): #Name a directory.
+def nameDir(name=None): #Name a directory.
     global path;
     global save_it;
     global settings;
-    name=ask(f"• What would you like to name the current working directory (`{path}`)? ");
+    if name==None:
+        name=ask(f"• What would you like to name the current working directory (`{path}`)? ");
     if " " in name:
         print(f"• No spaces are allowed in abstract directory names. `{path}` not named.");
     elif name!=None and name!="":
@@ -969,8 +1005,8 @@ if __name__=="__main__":
             flagSplit=flags.split(" ");
             args=flagSplit[1:];
             flags=flagSplit[0];
-            if flags.replace("-","") in {"aload", "nload", "xload", "help", "about", "ver", "version", "go", "license", "asave", "nsave", "xsave", "load", "save", "settings"}:
-                print("• Your chosen flags/options are arranged like a non-cominable option name. For safety reasons, in case this was an accident, the program will exit here without doing anything else. Use two hyphens for the non-combinable option.");
+            if flags.replace("-","") in {"aload", "nload", "xload", "help", "about", "ver", "version", "go", "license", "asave", "nsave", "xsave", "load", "save", "settings", "do"}:
+                print("• Your chosen flags/options are arranged like a non-cominable option name. For safety reasons, in case this was an accident, the program will exit here without doing anything else. Use two hyphens for the non-combinable option. You may try reordering your flags.");
                 sys.exit(1);
             if "0" in flags: #Toggle whether to open/decrypt passphrase-protected files and offer to encrypt any saved changes to the temporary file and overwrite the original.
                 settings["kicrypt"]=not settings["kicrypt"];
@@ -1011,7 +1047,7 @@ if __name__=="__main__":
                 #addCurrentBaseDir();
                 setDir();
             if "b" in flags: #Search from a specified directory (by the abstract name you've given it).
-                incflags=set("BdDt89");
+                incflags=set("BdDgNt89");
                 badCombo=False;
                 badList="";
                 for x in incflags:
@@ -1082,6 +1118,25 @@ if __name__=="__main__":
                         save_it=True;
                 else:
                     print("• The default file extension has not been changed.");
+            if "g" in flags: #Specify a named directory (by name) and turn it into the default directory.
+                incflags=set("BbdDNt89");
+                badCombo=False;
+                badList="";
+                for x in incflags:
+                    if x in flags:
+                        badCombo=True;
+                        badList+=x;
+                if badCombo==True:
+                    print(f"• The flag(s)/option(s) `-{badList}` are not combinable with -g; therefore, -g is not being done. Not opening/creating a key.");
+                    args=[];
+                else:
+                    abname=args[0];
+                    args=args[1:];
+                    if abname in settings["named_dirs"]:
+                        setDefaultDir(name=abname, activate=True);
+                    else:
+                        print(f"• `{abname}` is not an abstract directory name. Because of this, if you supplied a key it will not be accessed, nor created this time.");
+                        args=[];
             if "h" in flags: #Print the help string.
                 print("\n\n"+HELP+"\n\n");
             if "n" in flags: #List the base directories and the default directory.
@@ -1096,7 +1151,26 @@ if __name__=="__main__":
                     print("• Named directories:")
                     for k,v in settings["named_dirs"].items():
                         print(f"`{k}`: `{v}`");
-            if "o" in flags: #Toggle whetehr to open all files with the name at once (instead of just one). Default is False.
+            if "N" in flags: #Give the current working directory structure a name.
+                incflags=set("AaBbdDgt89");
+                badCombo=False;
+                badList="";
+                for x in incflags:
+                    if x in flags:
+                        badCombo=True;
+                        badList+=x;
+                if badCombo==True:
+                    print(f"• The flag(s)/option(s) `-{badList}` are not combinable with -N; therefore, -N is not being done. Not opening/creating a key.");
+                    args=[];
+                else:
+                    try:
+                        nameDir(name=args[0]);
+                        args=args[1:];
+                    except IndexError:
+                        print("You did not supply a name to give the current working directory");
+                        nameDir();
+                        args=[];
+            if "o" in flags: #Toggle whether to open all files with the name at once (instead of just one). Default is False.
                 settings["openAll"]=not settings["openAll"];
                 print("• Open all files at once set to "+str(settings["openAll"])+".");
                 save_it=True
@@ -1279,6 +1353,16 @@ if __name__=="__main__":
                         else:
                             print("• Current app scheme not saved.");
                     args=[];
+            elif pre.startswith("--do "): #Like --go [name], but it makes it the default directory and activates the default directory, too.
+                args=args[1:];
+                if args[0] in settings["named_dirs"]:
+                    print(f"• Opening a new shell in `{args[0]}`: `{settings['named_dirs'][args[0]]}`. Type `exit` to return to where you were, when you are ready.");
+                    setDefaultDir(name=args[0], activate=True);
+                    subprocess.run(["bash"]);
+                    print("• Welcome back to your old shell!");
+                else:
+                    print(f"• You have not named a directory `{args[0]}`. You cannot go to it.");
+                args=[];
             elif pre=="--f": #&&&Open multiple filepaths (files with different names) instead of just one name; requires escaped spaces (no unescaped qutoes to handle spaces).
                 #multipleFiles=re.split(r"(?<!\\) ", args);
                 pass;
