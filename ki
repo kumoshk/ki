@@ -2,13 +2,13 @@
 
 #Note that `&&&` in a comment by the code means that the section of code is unfinished. `Unimplemented` by a comment means it's unimplemented (but it may or may not be finished). ###### marks the beginning of a significantly different section of the code.
 
-import glob, sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfile, getpass, shlex, random, hashlib, datetime;
+import sys, os, subprocess, re, pickle, platform, shutil, pathlib, tempfile, getpass, shlex, random, hashlib, datetime;
 
 #Variables with capital letters aren't meant to change their values during execution.
 
 PN="Ki"; #Program name, used in the documentation.
 FN="ki"; #File name, used in the documentation and other areas.
-VER="0.12.7"; #The current program version.
+VER="0.13.0"; #The current program version.
 PROTOCOL=5; #This is the protocol for pickling. If not available, the latest one available will be used.
 
 VERSION=f"""
@@ -503,12 +503,29 @@ def unescapePath(p):
     return p;
 
 def eglob(p1, p2, recursive=False): #escaping variant of glob
-    escapedPath=glob.escape(p1)+"/**/"+glob.escape(p2).replace("[*]", "*"); #&&&Research any others you might not want to be escaped (the asterisk allows you to do wildcard searches for files: e.g. ki myPartial*
-    to_return=glob.glob(escapedPath, recursive=recursive);
+    #escapedPath=glob.escape(p1)+"/**/"+glob.escape(p2).replace("[*]", "*"); #&&&Research any others you might not want to be escaped (the asterisk allows you to do wildcard searches for files: e.g. ki myPartial*
+    #to_return=glob.glob(escapedPath, recursive=recursive);
+    to_return=[];
+    if recursive==True:
+        to_return=eglob(p1, p2, recursive=False);
+        if len(to_return)>0 and settings["openAll"]==False:
+            return [to_return[0]]; #This ensures we don't have to search everything if what we want is right in front of our nose.
+        for x in pathlib.Path(p1).rglob(p2):
+            to_return.append(x);
+    else:
+        for x in pathlib.Path(p1).glob(p2):
+            to_return.append(x);
     if settings["kicrypt"]==True:
         if p2.endswith(".asc")==False:
             #Treat such as .ki.asc files as if they were such as .ki files.
-            ascReturn=glob.glob(escapedPath+".asc", recursive=recursive);
+            #ascReturn=glob.glob(escapedPath+".asc", recursive=recursive);
+            ascReturn=[];
+            if recursive==True:
+                for x in pathlib.Path(p1).rglob(p2+".asc"):
+                    ascReturn.append(x);
+            else:
+                for x in pathlib.Path(p1).glob(p2+".asc"):
+                    ascReturn.append(x);
             to_return.extend(ascReturn);
     if settings["openAll"]==False:
         i=0;
